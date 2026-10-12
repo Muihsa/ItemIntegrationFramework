@@ -1,0 +1,110 @@
+{
+  // =========================================================================================
+  // 👑 [View Layer Global] - Defines the skeleton of the single-line info card.
+  // These settings will be automatically inherited by all DataRules below.
+  // =========================================================================================
+  "global": {
+    "id": "Standard_IIF_Card",    // [Required] Unique ID for the card.
+    "priority": 800,               // [Optional] Sorting priority. Lower numbers appear earlier/higher.
+
+    // [Key Enum] Layout mode (displayType)
+    // 0 = Native single-line plain text (Left label + Right value)
+    "displayType": 0,              
+
+    // 👑 ====================================================================================
+    // 👑 [Core Feature] Smart Anchor Engine & Dynamic Difference
+    // ====================================================================================
+    // The engine determines the physical position of the card based on this configuration.
+    "anchorTarget": "$rng",        // [Optional] Anchor: Locks onto a vanilla card (e.g., "$rng" for Range) or a custom card ID.
+    "anchorMode": "after",         // [Optional] Mode: "after" (below), "before" (above), "replace" (overwrite).
+
+    "hideDifference": false,       // [New] Hide comparison difference? false = shows red/green diff like (+5.0).
+    "invertDiffColor": false,      // [New] Invert diff red/green logic? (true=positive red, negative green, ideal for AP Cost).
+
+    "content": {
+      "title": { 
+        "text": "Attribute Name",  // Text displayed on the left, supports localized tags (e.g., "$acc").
+        "highlight": false         // Whether to use the theme highlight color to render the label.
+      }
+    }
+  },
+
+  // =========================================================================================
+  // 🧠 [Logic Layer DataRules] - Core triggers and dynamic data comparison rules
+  // =========================================================================================
+  "DataRules": [
+    
+    // ---------------------------------------------------------------------------------------
+    // [Module 1: Basic Dictionary Mapping & Text Override]
+    // ---------------------------------------------------------------------------------------
+    {
+      "comment": "Simple keyword trigger with manually specified text on the right.",
+      "ConditionType": "Form",
+      "ValuesMapping": {
+        "MyMod.esp|0x123": { "value": "Reinforced", "state": "good" },
+        "MyMod.esp|0x456": { "value": "Unstable", "state": "bad" }
+      }
+    },
+
+    // ---------------------------------------------------------------------------------------
+    // [Module 2: Physical Attribute Extraction (WeaponStat) & Auto-Difference]
+    // ---------------------------------------------------------------------------------------
+    {
+      "comment": "Extracts underlying physical attributes and automatically enables red/green difference comparison for the equipped weapon.",
+      "ConditionType": "FormType",
+      "ConditionIDs": ["Weapon"],
+      "Result": {
+        "state": "standard",       // 👑 Uses standard white font (ignores theme color).
+        "DataSource": {
+          "Type": "WeaponStat",    //
+          "ID": "APCost"           // Automatically extracts and compares Action Point cost.
+        }
+      }
+    },
+
+    // ---------------------------------------------------------------------------------------
+    // [Module 3: Magic Effect Unpacker (OMODMagicMagnitude)]
+    // ---------------------------------------------------------------------------------------
+    {
+      "comment": "Fully automatic unpacking of magic magnitude attached to weapon mods (OMODs), with real-time comparison.",
+      "ConditionType": "FormType",
+      "ConditionIDs": ["Weapon"],
+      "Result": {
+        "state": "standard",
+        "DataSource": {
+          "Type": "OMODMagicMagnitude", // 👑 Powerful unpacker engine.
+          "ID": "ANY"                   // Automatically accumulates magic bonus values from all attachments.
+        }
+      }
+    },
+
+    // ---------------------------------------------------------------------------------------
+    // [Module 4: Chained Anchor Positioning Example (FO76 Layout Replica)]
+    // ---------------------------------------------------------------------------------------
+    {
+      "comment": "Uses the anchor system to accurately place this card directly below the vanilla 'Range' card.",
+      "ConditionType": "FormType",
+      "ConditionIDs": ["Weapon"],
+      "anchorTarget": "$rng",      // Anchors to vanilla "Range".
+      "anchorMode": "after",       // Places after the Range card.
+      "Result": {
+        "value": "100%",
+        "tag": "VATS Accuracy"
+      }
+    },
+
+    // ---------------------------------------------------------------------------------------
+    // [Module 5: Dynamic Tag Macro (@GameName)]
+    // ---------------------------------------------------------------------------------------
+    {
+      "comment": "Uses a macro to automatically grab the in-game localized name as the left label.",
+      "ConditionType": "Form",
+      "ConditionIDs": ["Fallout4.esm|0x0004A0B6"], 
+      "Result": {
+        "tag": "@GameName",        // Automatically displays as "Science!".
+        "value": "Activated",
+        "state": "good"
+      }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+    "DataRules": [
+        {
+            "ConditionIDs": [
+                "Weapon"
+            ],
+            "ConditionType": "FormType",
+            "Result": {
+                "DataSource": {
+                    "ID": "ReloadSpeed",
+                    "Type": "WeaponStat"
+                },
+                "state": "normal"
+            }
+        }
+    ],
+    "global": {
+        "anchorMode": "after",
+        "anchorTarget": "Stats_ZoomDataFOVMult",
+        "content": {
+            "hasBackground": false,
+            "title": {
+                "highlight": false,
+                "text": "$IIF_Reload"
+            }
+        },
+        "displayType": 0,
+        "hasBackground": false,
+        "id": "Stats_ReloadSpeed",
+        "priority": 50
+    }
+}

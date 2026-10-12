@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>ItemIntegrationFramework GUI Editor</title>
+    <link rel="stylesheet" href="gui_editor.css" />
+</head>
+<body>
+    <div class="editor-panel">
+        <div class="header">
+            <span>ItemIntegrationFramework Editor</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button id="langToggleBtn" onclick="(function(btn){var lang=typeof iifCurrentLang==='function'?iifCurrentLang():'zh_CN';var next=lang==='zh_CN'?'en_US':'zh_CN';if(typeof iifApplyLanguage==='function')iifApplyLanguage(next);btn.textContent=next==='zh_CN'?'EN':'中文';})(this)" style="height:22px;padding:0 8px;font-size:11px;font-weight:700;border-radius:4px;border:1px solid rgba(155,185,255,0.5);background:rgba(80,120,255,0.2);color:#dce4ff;cursor:pointer;">EN</button>
+                <span class="badge" id="stateBadge">CLOSED</span>
+            </div>
+        </div>
+        <div class="content">
+            <div class="left-col">
+                <div class="section">
+                    <div class="section-title"><span>Quick Tools</span></div>
+                    <div class="toolbar">
+                        <button onclick="requestClose()">Close</button>
+                        <button id="captureBtn" onclick="startCapture()">Set shortcut</button>
+                        <button onclick="requestReload()">Reload JSON rules</button>
+                        <button onclick="requestSave()">Save JSON now</button>
+                        <button onclick="refreshRuleList()">Refresh Rule List</button>
+                    </div>
+                    <div class="toolbar">
+                        <span class="small-note">Menu: <span id="menuState">closed</span></span>
+                        <span class="small-note">Shortcut: <span id="hotkeyText">Shift+F11</span></span>
+                        <span class="small-note">Capture: <span id="captureHint">not active</span></span>
+                    </div>
+                    <div class="status">
+                        <div>Selected rule: <span id="selectedRuleDisplay">-</span></div>
+                        <div>Last action: <span id="lastAction">ready</span></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">
+                        <span>Create New Rule</span>
+                    </div>
+                    <div class="form-grid">
+                        <label for="newRuleId">Rule ID</label>
+                        <input id="newRuleId" type="text" placeholder="Stats_MyNewRule" />
+                        <label for="newRuleTitle">Default Title</label>
+                        <input id="newRuleTitle" type="text" placeholder="display title" />
+                        <label for="newRulePriority">Priority</label>
+                        <input id="newRulePriority" type="number" value="800" />
+                        <label for="newRuleType">Display Type</label>
+                        <select id="newRuleType">
+                            <option value="0">0 - Value</option>
+                            <option value="1">1 - Bar</option>
+                            <option value="2">2 - Flex</option>
+                        </select>
+                        <label for="newRuleFile">File</label>
+                        <input id="newRuleFile" type="text" value="gui_editor_rules.json" placeholder="gui_editor_rules.json" />
+                    </div>
+                    <div class="toolbar">
+                        <button onclick="createRule()">Create Rule</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">
+                        <span>Rule List</span>
+                        <span id="ruleCount" class="small-note">0 rules</span>
+                    </div>
+                    <div class="toolbar">
+                        <input id="ruleSearch" type="text" placeholder="Search rule id or title..." oninput="repaintRuleListFromCachedData()" />
+                        <select id="displayTypeFilter" onchange="repaintRuleListFromCachedData()">
+                            <option value="-1">All types</option>
+                            <option value="0">Type 0</option>
+                            <option value="1">Type 1</option>
+                            <option value="2">Type 2</option>
+                        </select>
+                        <select id="sourceFilter" onchange="repaintRuleListFromCachedData()">
+                            <option value="all">All Sources</option>
+                            <option value="json">Only JSON</option>
+                            <option value="cpp">Only C++ Override</option>
+                            <option value="overridden">Only Overridden</option>
+                        </select>
+                        <select id="sceneFilter" onchange="repaintRuleListFromCachedData()">
+                            <option value="all">All Scenes</option>
+                            <option value="guns">guns</option>
+                            <option value="melee">melee</option>
+                            <option value="armor">armor</option>
+                            <option value="aid">aid</option>
+                            <option value="custom">custom</option>
+                        </select>
+                    </div>
+                    <div id="ruleList" class="rule-list">Loading ...</div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">
+                        <span>Rule Relationship Tree</span>
+                        <span id="ruleTreeCount" class="small-note">0 nodes</span>
+                    </div>
+                    <div class="toolbar">
+                        <input id="treeSearch" type="text" placeholder="Search tree ids ..." oninput="refreshRuleTree()" />
+                        <select id="treeSourceFilter" onchange="refreshRuleTree()">
+                            <option value="all">All Sources</option>
+                            <option value="json">Only JSON</option>
+                            <option value="cpp">Only C++</option>
+                        </select>
+                        <select id="treeSceneFilter" onchange="refreshRuleTree()">
+                            <option value="all">All Scenes</option>
+                            <option value="guns">guns</option>
+                            <option value="melee">melee</option>
+                            <option value="armor">armor</option>
+                            <option value="aid">aid</option>
+                            <option value="custom">custom</option>
+                        </select>
+                    </div>
+                    <div id="ruleTree" class="rule-tree">Loading tree ...</div>
+                </div>
+                </div>
+
+            <div class="right-col">
+                <div class="section form-grid-scroll">
+                    <div class="section-title">
+                        <span>Rule Details</span>
+                        <span id="selectedRulePath" class="small-note"></span>
+                        <span id="selectedRuleSource" class="small-note">source: json</span>
+                    </div>
+                    <div class="section-scroll-body">
+                        <div class="form-grid">
+                            <div>Rule ID</div>
+                            <div><input id="ruleId" type="text" readonly /></div>
+                            <div>Title</div>
+                            <div><input id="ruleTitle" type="text" placeholder="Title text" /></div>
+                            <div>Priority</div>
+                            <div><input id="rulePriority" type="number" value="800" /></div>
+                            <div>Display Type</div>
+                            <div>
+                                <select id="ruleDisplayType">
+                                    <option value="-1">-1 - CPP/Computed</option>
+                                    <option value="0">0 - Value</option>
+                                    <option value="1">1 - Bar</option>
+                                    <option value="2">2 - Flex</option>
+                                </select>
+                            </div>
+                            <div>State</div>
+                            <div>
+                                <select id="ruleState">
+                                    <option value="normal">normal</option>
+                                    <option value="standard">standard</option>
+                                    <option value="good">good</option>
+                                    <option value="bad">bad</option>
+                                </select>
+                            </div>
+                            <div>Highlight Label</div>
+                            <div><input id="ruleHighlight" type="checkbox" /></div>
+                            <div>Has Background</div>
+                            <div><input id="ruleBackground" type="checkbox" /></div>
+                            <div>Hide Difference</div>
+                            <div><input id="ruleHideDiff" type="checkbox" /></div>
+                            <div>Invert Diff Color</div>
+                            <div><input id="ruleInvertDiff" type="checkbox" /></div>
+                            <div>Value Text</div>
+                            <div><input id="ruleValueText" type="text" /></div>
+                            <div>Value Align</div>
+                            <div>
+                                <select id="ruleValueAlign">
+                                    <option value="">default</option>
+                                    <option value="left">left</option>
+                                    <option value="center">center</option>
+                                    <option value="right">right</option>
+                                </select>
+                            </div>
+                            <div>Value Standard</div>
+                            <div><input id="ruleValueStandard" type="checkbox" /></div>
+                            <div>Value Color (Hex)</div>
+                            <div><input id="ruleValueColor" type="text" placeholder="0xFFFFFF" /></div>
+                            <div>Background Color (Hex)</div>
+                            <div><input id="ruleBackgroundColor" type="text" placeholder="0x000000" /></div>
+                            <div>Show Bar</div>
+                            <div><input id="ruleShowBar" type="checkbox" /></div>
+                            <div>Show Value</div>
+                            <div><input id="ruleShowValue" type="checkbox" /></div>
+                            <div>Fill % (0~1)</div>
+                            <div><input id="ruleFillPct" type="text" placeholder="0.65" /></div>
+                            <div>Shield % (0~1)</div>
+                            <div><input id="ruleShieldPct" type="text" placeholder="0.0" /></div>
+                            <div>Fill Color (Hex)</div>
+                            <div><input id="ruleFillColor" type="text" placeholder="0xA9D08E" /></div>
+                        </div>
+                        <div class="section-divider"></div>
+                        <div class="section-title section-title-collapsible" data-toggle-target="ruleFlexSection">
+                            <span class="detail-caret">\u25BC</span>
+                            <span>Flex Boxes</span>
+                        </div>
+                        <div id="ruleFlexSection" class="detail-collapsible-body">
+                            <div class="form-grid">
+                                <div>Left Tag</div>
+                                <div><input id="leftTag" type="text" /></div>
+                                <div>Left Value</div>
+                                <div><input id="leftValue" type="text" /></div>
+                                <div>Left Is Icon</div>
+                                <div><input id="leftIsIcon" type="checkbox" /></div>
+                                <div>Left State</div>
+                                <div><input id="leftState" type="text" placeholder="normal / good / bad / standard" /></div>
+                                <div>Left Align</div>
+                                <div><input id="leftAlign" type="text" placeholder="left / right / center" /></div>
+                                <div>Left Active</div>
+                                <div><input id="leftActive" type="checkbox" checked /></div>
+
+                                <div>Right Tag</div>
+                                <div><input id="rightTag" type="text" /></div>
+                                <div>Right Value</div>
+                                <div><input id="rightValue" type="text" /></div>
+                                <div>Right Is Icon</div>
+                                <div><input id="rightIsIcon" type="checkbox" /></div>
+                                <div>Right State</div>
+                                <div><input id="rightState" type="text" placeholder="normal / good / bad / standard" /></div>
+                                <div>Right Align</div>
+                                <div><input id="rightAlign" type="text" placeholder="left / right / center" /></div>
+                                <div>Right Active</div>
+                                <div><input id="rightActive" type="checkbox" checked /></div>
+                            </div>
+                        </div>
+                        <div class="section-divider"></div>
+                        <div class="section-title section-title-collapsible" data-toggle-target="cppMetaSection">
+                            <span class="detail-caret">\u25BC</span>
+                            <span>CPP Metadata</span>
+                        </div>
+                        <div id="cppMetaSection" class="detail-collapsible-body">
+                            <div id="cppMeta" class="cpp-meta">
+                                <div class="form-grid">
+                                    <div>Default Priority</div>
+                                    <div><input id="cppDefaultPriority" type="number" readonly /></div>
+                                    <div>Is Registered</div>
+                                    <div><input id="cppIsRegistered" type="text" readonly /></div>
+                                    <div>Default Anchor Targets</div>
+                                    <div><textarea id="cppDefaultAnchorTargets" readonly></textarea></div>
+                                    <div>Default Anchor Modes</div>
+                                    <div><textarea id="cppDefaultAnchorModes" readonly></textarea></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section-title section-title-collapsible" data-toggle-target="ruleAnchorsSection">
+                            <span class="detail-caret">\u25BC</span>
+                            <span>Anchors</span>
+                        </div>
+                        <div id="ruleAnchorsSection" class="detail-collapsible-body">
+                            <div id="anchorRows" class="anchor-list"></div>
+                        </div>
+
+                        <div class="section-title section-title-collapsible" data-toggle-target="ruleAnchorPreviewSection">
+                            <span class="detail-caret">\u25BC</span>
+                            <span>Anchor Preview</span>
+                        </div>
+                        <div id="ruleAnchorPreviewSection" class="detail-collapsible-body">
+                            <div id="anchorPreview" class="anchor-preview">No rule selected.</div>
+                        </div>
+                        <div class="toolbar">
+                            <button onclick="addAnchorRow('BOTTOM','after')">Add Anchor</button>
+                            <button id="saveRuleBtn" onclick="saveRuleChanges()">Save This Rule</button>
+                            <button id="deleteRuleBtn" onclick="deleteCurrentRule()">Delete Rule</button>
+                            <button id="resetCppOverrideBtn" onclick="resetCurrentCppOverride()" style="display:none;">Reset Override</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Runtime Log</div>
+                    <div id="runtimeLog" class="log runtime-log">Boot log: waiting for C++ bridge...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="gui_editor-core.js"></script>
+    <script src="gui_editor-render.js"></script>
+    <script src="gui_editor-features.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+﻿{
+    "name":  "ItemIntegrationFramework",
+    "modRoot":  "",
+    "xmake":  {
+                  "enabled":  true,
+                  "target":  "ItemIntegrationFramework"
+              },
+    "papyrus":  {
+                    "enabled":  false,
+                    "sourceRoot":  "Scripts/Source/User",
+                    "outputRoot":  "Scripts",
+                    "scripts":  [
+
+                                ],
+                    "importPaths":  [
+
+                                    ]
+                },
+    "runtimeDirectories":  [
+                               "F4SE",
+                               "Interface"
+                           ],
+    "rootFiles":  [
+
+                  ]
+}

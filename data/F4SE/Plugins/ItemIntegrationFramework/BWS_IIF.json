@@ -1,0 +1,70 @@
+{
+    "DataRules": [
+        {
+            "ConditionType": "Form",
+            "ValuesMapping": {
+                "Broken Weapon System.esp|0x1E": {
+                    "state": "bad",
+                    "value": "@GameName"
+                },
+                "Broken Weapon System.esp|0x1F": {
+                    "state": "normal",
+                    "value": "@GameName"
+                },
+                "Broken Weapon System.esp|0x23": {
+                    "state": "normal",
+                    "value": "@GameName"
+                },
+                "Broken Weapon System.esp|0x26": {
+                    "state": "normal",
+                    "value": "@GameName"
+                },
+                "Broken Weapon System.esp|0x3E": {
+                    "state": "good",
+                    "value": "@GameName"
+                },
+                "Broken Weapon System.esp|0x43": {
+                    "state": "good",
+                    "value": "@GameName"
+                },
+                "Broken Weapon System.esp|0xF9A": {
+                    "state": "bad",
+                    "value": "@GameName"
+                }
+            }
+        }
+    ],
+    "global": {
+        "anchorMode": [
+            "after",
+            "after"
+        ],
+        "anchorTarget": [
+            "$ammo",
+            "TOP"
+        ],
+        "backgroundColor": "0x000000",
+        "content": {
+            "hasBackground": false,
+            "leftBox": {
+                "tag": "",
+                "value": ""
+            },
+            "rightBox": {
+                "align": "right",
+                "isIcon": false,
+                "tag": "",
+                "value": ""
+            },
+            "title": {
+                "highlight": false,
+                "text": "BWS-CND"
+            }
+        },
+        "displayType": 2,
+        "hasBackground": false,
+        "id": "BWS",
+        "priority": 6,
+        "sortValueFrom": "rightBox"
+    }
+}

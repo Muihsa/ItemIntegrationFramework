@@ -1,0 +1,42 @@
+{
+    "DataRules": [
+        {
+            "ConditionIDs": [
+                "Weapon"
+            ],
+            "ConditionType": "FormType",
+            "Result": {
+                "DataSource": {
+                    "ID": "ANY",
+                    "Multiplier": 100,
+                    "Suffix": "%",
+                    "Type": "VATS_Accuracy"
+                },
+                "state": "normal"
+            }
+        }
+    ],
+    "global": {
+        "anchorMode": [
+            "after",
+            "before"
+        ],
+        "anchorTarget": [
+            "$acc",
+            "$wt"
+        ],
+        "backgroundColor": "0x000000",
+        "content": {
+            "hasBackground": false,
+            "title": {
+                "highlight": false,
+                "text": "$IIF_VATSBonus"
+            }
+        },
+        "displayType": 0,
+        "hasBackground": false,
+        "hideDifference": false,
+        "id": "Stats_VATS",
+        "priority": 40
+    }
+}

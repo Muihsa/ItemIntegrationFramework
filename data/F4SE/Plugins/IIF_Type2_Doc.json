@@ -1,0 +1,185 @@
+{
+  // =========================================================================================
+  // 👑 [View Layer Global] - Defines the skeleton and UI layout of the info card.
+  // These settings will be automatically inherited by all DataRules below.
+  // =========================================================================================
+  "global": {
+    "id": "Master_IIF_Card",      // [Required] Unique card ID. IIF uses this to prevent duplicates. Acts as an anchor target for others.
+    "priority": 800,               // [Optional] Sorting priority. Lower numbers appear earlier/higher.
+    
+    // [Key Enum] Layout mode (displayType)
+    // 0 = Native plain text | 1 = Progress bar mode | 2 = Dual-row flex container (Framework Core)
+    "displayType": 2,              
+
+    "hasBackground": false,        // [Optional] 👑 Defaults to false to maintain vanilla UI immersion.
+    "sortValueFrom": "rightBox",   // [Optional] Tells IIF which container's value to use for item list sorting.
+
+    // 👑 ====================================================================================
+    // 👑 [New Feature] Smart Anchor Engine & Dynamic Difference
+    // ====================================================================================
+    // The engine globally sniffs the text tag of existing cards (Vanilla starts with $, custom uses id or text).
+    "anchorTarget": "$rng",        // [Optional] Anchor Target: e.g., "$rng" (Range), "$acc" (Accuracy), or custom "Stats_VATS".
+    "anchorMode": "after",         // [Optional] Anchor Mode: "after", "before", "replace" (overwrites vanilla).
+
+    "hideDifference": false,       // [New] Hide equipped comparison red/green diff? Default is false (C++ auto-calculates).
+    "invertDiffColor": false,      // [New] Invert red/green logic? (true=positive red, negative green. Best for AP Cost).
+
+    // Basic layout containers: Omit unused containers, the engine automatically centers/aligns.
+    "content": {
+      "title": { 
+        "text": "General Info",       
+        "highlight": false        
+      },
+      // 👑 Smart Syntax Sugar: Recommended to keep rightBox. If containers are not explicitly defined in DataRules, 
+      // the engine automatically populates everything into this rightBox.
+      "rightBox": {
+        "tag": "",
+        "isIcon": false,
+
+        // 💡 [Core Rule] "value" extraction logic:
+        // 1. Static override: Input plain text (e.g., "Broken"), ignores engine and forces text display.
+        // 2. Original name fetch: Use macro "@GameName", engine auto-fetches the real localized FormID name.
+        // 3. Value extraction: Leave empty (""), engine auto-extracts value and calculates diff when hitting an ActorValue or DataSource.
+        "value": "",
+
+        "state": "normal", // Optional: "normal"(Vanilla color), "bad"(Red), "good"(Green), "standard"(Pure white)
+        "align": "right"   // 👑 Determines physical alignment: "right"(Default), "center", "left"
+      }
+    }
+  },
+
+  // =========================================================================================
+  // 🧠 [Logic Layer DataRules] - Core triggers and data extraction rules
+  // The engine parses top-down, C++ auto-infers the actual FormID type (Keyword/OMOD/AV/GLOB/WEAP, etc.)
+  // =========================================================================================
+  "DataRules": [
+    
+    // ---------------------------------------------------------------------------------------
+    // [Module 1: Form Unified Dictionary Mapping (O(1) Fast Match) + Smart Single Container]
+    // ---------------------------------------------------------------------------------------
+    {
+      "comment": "Everything is a Form! Mix different types of IDs in the dictionary, C++ categorizes them automatically.",
+      
+      // 👑 [Enum] Trigger Condition (ConditionType) - Simplified categories:
+      // "Form"       = Core workhorse! Input any ID (Keyword, OMOD, specific weapon, etc.).
+      // "WeaponType" = Scans underlying weapon class (Pistol, Rifle, Shotgun, Heavy, Melee, etc.)
+      // "ItemType"   = Scans main item category (Weapon, Armor, Ammo, Medicine, Misc)
+      "ConditionType": "Form",
+      
+      "ValuesMapping": {
+        "BWS.esp|0x123": { "value": "Completely Broken", "state": "bad" }, // Auto-identified as Keyword
+        "Tactical.esp|0x456": { "value": "Tactical Mount" },               // Auto-identified as OMOD
+        
+        // 💡 Custom display for specific weapons without DataSource, pure JSON text.
+        "Fallout4.esm|0x0001DACF": { "value": "Laser Musket", "tag": "Charged" },
+        "Fallout4.esm|0x000FE268": { "value": "Railway Rifle", "tag": "Kinetic", "state": "bad" },
+        "Fallout4.esm|0x0014D09E": { "value": "Laser Blunderbuss", "tag": "Scatter" }
+      }
+    },
+
+    // ---------------------------------------------------------------------------------------
+    // [Module 2: Strict Combination Triggers (MatchType: AND)]
+    // ---------------------------------------------------------------------------------------
+    {
+      "comment": "Strict Intersection: Must possess ALL IDs in the array simultaneously to trigger this result.",
+      "ConditionType": "Form",
+      "MatchType": "AND",
+      "ConditionIDs": [
+        "Fallout4.esm|0x12345", 
+        "Fallout4.esm|0x67890"  
+      ],
+      "Result": {
+        "value": "Full Tactical",
+        "state": "good"
+      }
+    },
+
+    // ---------------------------------------------------------------------------------------
+    // [Module 3: Direct ActorValue Output Mode (Internal Source Extraction)]
+    // ---------------------------------------------------------------------------------------
+    {
+      "comment": "Directly grabs the ActorValue attached to weapons/armor. The engine automatically triggers dual-core comparison for red/green diffs.",
+      "ConditionType": "Form", 
+      "ConditionIDs": [
+        "DamageThresholdMod.esp|0x999" 
+      ],
+      "Result": {
+        "tag": "DT",
+        "state": "good"
+      }
+    },
+
+    // ---------------------------------------------------------------------------------------
+    // [Module 4: External Live Data Extraction & Ultimate Unpacker]
+    // ---------------------------------------------------------------------------------------
+    {
+      "comment": "Requests dynamically changing data from external systems. 👑 Supports WeaponStat (hidden physical stats) and OMODMagicMagnitude (magic unpacker).",
+      "ConditionType": "WeaponType",
+      "ConditionIDs": ["Pistol"],
+      "Result": {
+        "tag": "VATS Cost",            
+        "state": "standard",
+
+        // 👑 [Enum] Ultimate DataSource Types (DataSource.Type):
+        // "Form"               = Global Variables (GLOB) & live ActorValues.
+        // "PerkRank"           = Extracts skill progress (Formatted as "Current/Max").
+        // "WeaponStat"         = Auto-fetches underlying physical attributes (ID: "APCost", "Speed", "Reach").
+        // "OMODMagicMagnitude" = Safe magic magnitude unpacker (ID: "ANY" for all, or specify OMOD ID).
+        "DataSource": {
+          "Type": "WeaponStat",
+          "ID": "APCost" 
+        }
+      }
+    },
+
+    // ---------------------------------------------------------------------------------------
+    // [Module 5: Dynamic Tag Macro (@GameName) & PerkRank Progress]
+    // ---------------------------------------------------------------------------------------
+    {
+      "comment": "Demonstrates the use of dynamic macros to grab the localized game name automatically.",
+      "ConditionType": "Form",
+      "ValuesMapping": {
+        "Fallout4.esm|0x000FF995": { // Alien Blaster
+          "tag": "@GameName",
+          "isIcon": false,         
+          "DataSource": {
+            "Type": "PerkRank",            
+            "ID": "Fallout4.esm|0x0004A0B6", 
+            "Required": 4                  
+          }
+        },
+        "Fallout4.esm|0x000FD11B": { // Broadsider
+          "tag": "@GameName",
+          "isIcon": true,
+          "DataSource": {
+            "Type": "PerkRank",
+            "ID": "Fallout4.esm|0x0004A0D6", 
+            "Required": 3 
+          }
+        }
+      }
+    },
+
+    // ---------------------------------------------------------------------------------------
+    // [Module 6: Explicit Dual-Container Separation Layout + Local Alignment Override]
+    // ---------------------------------------------------------------------------------------
+    {
+      "comment": "Explicitly invokes leftBox and rightBox when different info needs to be displayed on both sides simultaneously.",
+      "ConditionType": "Form",
+      "ConditionIDs": ["Fallout4.esm|0x000FF995"],
+      "Result": {
+        "leftBox": {
+          "tag": "STR Req", 
+          "value": "8.0",
+          "state": "bad",
+          "align": "left" // 💡 Local Override: Forces left text to align left, ignoring global settings.
+        },
+        "rightBox": {
+          "tag": "Weight",
+          "value": "Very Heavy",
+          "align": "center" // 💡 Local Override: Forces right text to center.
+        }
+      }
+    }
+  ]
+}

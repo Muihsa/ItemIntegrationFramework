@@ -1,0 +1,89 @@
+{
+  "global": {
+    "id": "Dynamic_Charge_Bar",
+    "priority": 750,
+    
+    // 👑 [Key Enum] 1 activates "Dynamic Progress Bar" mode
+    "displayType": 1, 
+    
+    // 👑 Type 1 also fully supports the Anchor Engine!
+    "anchorTarget": "$ammo",   // Anchors below the vanilla Ammo card.
+    "anchorMode": "after",
+    
+    "hasBackground": false,
+    "content": {
+      "title": { "text": "Core Energy", "highlight": false }
+    }
+  },
+
+  "DataRules": [
+    
+    // =======================================================================
+    // Scenario 1: Classic Pure Graphic Mode (Dark Souls Health Bar Style)
+    // =======================================================================
+    {
+      "comment": "Displays only the progress bar, completely hiding numerical text for immersion.",
+      "ConditionType": "Form",
+      "ConditionIDs": ["MyMod.esp|0x111"],
+      "Result": {
+        "fillPct": 0.75,           // Main progress 75%
+        "shieldPct": 0.10,         // Extra shield 10%
+        "fillColor": "0x00FF00",   // Green progress bar (hex string supported)
+        "showBar": true,           
+        "showValue": false         
+      }
+    },
+
+    // =======================================================================
+    // Scenario 2: Modern Hybrid Mode (Smartphone Battery Style)
+    // =======================================================================
+    {
+      "comment": "Progress bar as background, text hovering dead center.",
+      "ConditionType": "Form",
+      "ConditionIDs": ["MyMod.esp|0x222"],
+      "Result": {
+        "fillPct": 0.50,
+        "fillColor": "0xFFaa00",   // Orange
+        "showBar": true,           
+        "showValue": true,         
+        "valueText": "50% Stable", // Custom foreground text
+        "valueAlign": "center",    // Center alignment
+        "valueStandard": true      // 👑 Forces standard white color to prevent text from being swallowed by the background bar color.
+      }
+    },
+
+    // =======================================================================
+    // Scenario 3: Pure Text Wide-Screen Placeholder Mode
+    // =======================================================================
+    {
+      "comment": "Hides the graphic bar, leaving only a wide-screen text box that can be aligned freely.",
+      "ConditionType": "Form",
+      "ConditionIDs": ["MyMod.esp|0x333"],
+      "Result": {
+        "showBar": false,          
+        "showValue": true,         
+        "valueText": "System offline, recalibration required", 
+        "valueAlign": "left",      // Plenty of space, so we align left for long sentences.
+        "state": "bad"             // Uses 'bad' state to turn the text warning red.
+      }
+    },
+
+    // =======================================================================
+    // Scenario 4: Dynamic Value Extraction & Auto-Percentage
+    // =======================================================================
+    {
+      "comment": "Omits fillPct, allowing the engine to automatically calculate the progress percentage from the DataSource.",
+      "ConditionType": "Form",
+      "ConditionIDs": ["MyMod.esp|0x444"],
+      "Result": {
+        "showBar": true,           
+        "showValue": true,         
+        "valueAlign": "right",     // Classic RPG style: bar at the bottom, value pinned to the right.
+        "DataSource": {
+          "Type": "Form",
+          "ID": "Fallout4.esm|0x32E" // e.g., An ActorValue representing energy.
+        }
+      }
+    }
+  ]
+}

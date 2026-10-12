@@ -1,57 +1,27 @@
+[CmdletBinding()]
 param(
-    [ValidateSet('debug', 'releasedbg')]
+    [ValidateSet('debug', 'releasedbg', 'release')]
     [string]$Configuration = 'releasedbg',
-    [string]$CommonLibF4Path = '',
-    [switch]$SkipDependencyBootstrap
+    [ValidateSet('dear-main', 'wushen-main')]
+    [string]$CommonLibF4Profile,
+    [switch]$ValidateOnly
 )
 
 $ErrorActionPreference = 'Stop'
-$projectRoot = Split-Path -Parent $PSScriptRoot
+$projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$workspaceRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot '..\..'))
+$buildEntry = Join-Path $workspaceRoot 'tools\build\build-cpp.ps1'
 
-if ([string]::IsNullOrWhiteSpace($CommonLibF4Path)) {
-    $CommonLibF4Path = [Environment]::GetEnvironmentVariable('COMMONLIBF4_PATH', 'Process')
+$arguments = @{
+    ProjectRoot = $projectRoot
+    Target = 'ItemIntegrationFramework'
+    Configuration = $Configuration
+}
+if ($PSBoundParameters.ContainsKey('CommonLibF4Profile')) {
+    $arguments.CommonLibF4Profile = $CommonLibF4Profile
+}
+if ($ValidateOnly) {
+    $arguments.ValidateOnly = $true
 }
 
-if ([string]::IsNullOrWhiteSpace($CommonLibF4Path)) {
-    $workspaceRoot = $projectRoot
-    for ($i = 0; $i -lt 8 -and -not (Test-Path -LiteralPath (Join-Path $workspaceRoot 'workspace.json')); $i++) {
-        $parent = Split-Path -Parent $workspaceRoot
-        if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq $workspaceRoot) {
-            $workspaceRoot = $null
-            break
-        }
-        $workspaceRoot = $parent
-    }
-
-    if ($null -ne $workspaceRoot) {
-        $workspace = Get-Content -LiteralPath (Join-Path $workspaceRoot 'workspace.json') -Raw | ConvertFrom-Json
-        $profileName = [string]$workspace.defaultProfiles.commonlibf4
-        $profileProperty = $workspace.cppToolchains.PSObject.Properties[$profileName]
-        if ($null -eq $profileProperty) {
-            throw "Workspace CommonLibF4 profile is not defined: $profileName"
-        }
-        $CommonLibF4Path = Join-Path $workspaceRoot ([string]$profileProperty.Value.path)
-    }
-}
-
-if ([string]::IsNullOrWhiteSpace($CommonLibF4Path)) {
-    throw 'Set COMMONLIBF4_PATH, pass -CommonLibF4Path, or run this script inside the configured workspace.'
-}
-
-$CommonLibF4Path = [System.IO.Path]::GetFullPath($CommonLibF4Path)
-if (-not (Test-Path -LiteralPath (Join-Path $CommonLibF4Path 'xmake.lua'))) {
-    throw "CommonLibF4 checkout was not found at $CommonLibF4Path"
-}
-
-$env:COMMONLIBF4_PATH = $CommonLibF4Path
-Push-Location $projectRoot
-try {
-    & xmake f -P $projectRoot -y -m $Configuration
-    if ($LASTEXITCODE -ne 0) { throw 'XMake configuration failed.' }
-
-    & xmake -P $projectRoot -y ItemIntegrationFramework
-    if ($LASTEXITCODE -ne 0) { throw 'ItemIntegrationFramework build failed.' }
-}
-finally {
-    Pop-Location
-}
+& $buildEntry @arguments

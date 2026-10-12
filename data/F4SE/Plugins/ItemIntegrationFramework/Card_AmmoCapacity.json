@@ -1,0 +1,32 @@
+{
+    "DataRules": [
+        {
+            "ConditionIDs": [
+                "Weapon"
+            ],
+            "ConditionType": "FormType",
+            "Result": {
+                "DataSource": {
+                    "ID": "AmmoCapacity",
+                    "Type": "WeaponStat"
+                },
+                "state": "normal"
+            }
+        }
+    ],
+    "global": {
+        "anchorMode": "after",
+        "anchorTarget": "Stats_SecondaryDamage",
+        "content": {
+            "hasBackground": false,
+            "title": {
+                "highlight": false,
+                "text": "$IIF_AmmoCapacity"
+            }
+        },
+        "displayType": 0,
+        "hasBackground": false,
+        "id": "Stats_AmmoCapacity",
+        "priority": 45
+    }
+}

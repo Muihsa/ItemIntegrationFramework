@@ -12,6 +12,21 @@
 #define PLUGIN_VERSION_PATCH 5
 
 static bool g_imguiEditorInstalled = false;
+static bool g_scaleformTranslationsRegistered = false;
+
+static void RegisterScaleformTranslations(const char* reason) {
+	if (g_scaleformTranslationsRegistered) return;
+
+	auto* scaleformManager = RE::BSScaleformManager::GetSingleton();
+	if (!scaleformManager) return;
+
+	auto* translator = scaleformManager->GetTranslator();
+	if (!translator) return;
+
+	translator->AddTranslationsMod(PLUGIN_NAME);
+	g_scaleformTranslationsRegistered = true;
+	REX::INFO("[IIF] Scaleform translations registered. reason={}", reason ? reason : "unknown");
+}
 
 static void TryInstallImGuiEditor(const char* reason) {
 	if (g_imguiEditorInstalled) return;
@@ -109,6 +124,7 @@ static void RegisterCPPCard(const IIF_API::CPPCardRegistration* reg) {
 static void OnIIF_F4SEMessage(F4SE::MessagingInterface::Message* a_msg) {
 	if (!a_msg) return;
 	TryInstallImGuiEditor("f4se_message");
+	RegisterScaleformTranslations("f4se_message");
 	if (a_msg->type == F4SE::MessagingInterface::kGameLoaded) {
 		IIF_API::IIF_Interface api;
 		api.RegisterCPPCard = RegisterCPPCard;

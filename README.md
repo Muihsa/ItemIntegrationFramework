@@ -1,78 +1,27 @@
 # ItemIntegrationFramework
 
-Shared F4SE/CommonLibF4 framework for centralized item card injection, runtime
-hook handling, and integration between Fallout 4 mods.
+Fallout 4 framework project for item cards, shared runtime hooks, and integrations.
 
-Mod page and downloads: [Item Integration Framework on Nexus Mods](https://www.nexusmods.com/fallout4/mods/105672)
+## Project layout
 
-## Features
+- `src/` — C++ implementation and public APIs.
+- `修改过的FALLUI的SWF的as文件（信息卡）/` — existing AS3 source for the FallUI item card integration.
+- `data/` — project runtime image. Generated DLLs and SWFs are ignored by Git; other runtime assets remain available locally.
+- `F4SE/`, `Interface/`, and `PrismaUI_F4/` — retained legacy source/runtime mirrors from the previous workspace.
+- `mod.json` — project metadata used by the workspace.
 
-- Centralized JSON-driven item information card injection
-- Public C++ API for cards, damage modifiers, and armor modifiers
-- Shared runtime hooks for dependent plugins
-- Type 0, Type 1, and Type 2 card layouts
-- Configurable anchors, ordering, replacement, and value mapping
-- In-game ImGui rule and layout editor
-- Optional Prisma UI editor source
-- Multi-runtime Fallout 4 support through CommonLibF4
-
-## Source layout
-
-- `src`: native backend, public API, hooks, and editor implementation.
-- `config/ItemIntegrationFramework`: default card rules and translations.
-- `docs/examples`: English and Chinese card format examples.
-- `ui/actionscript/fallui-patches`: item card ActionScript integration source.
-- `ui/prisma`: IIF-authored Prisma UI editor frontend.
-
-Compiled DLL, SWF, PEX, plugin, font, and FallUI media assets are not included.
-Install the complete mod package from Nexus Mods for normal gameplay.
-
-## Requirements
-
-- Windows 10 or later
-- Visual Studio 2022 Build Tools with Desktop development with C++
-- Git
-- XMake 3.0 or later
-- A CommonLibF4 checkout selected by the build environment
-- Fallout 4 Script Extender
+`project.json` is retained as legacy metadata from the previous workspace. New workspace tooling uses `mod.json`.
 
 ## Build
 
-This project must be built against an existing CommonLibF4 checkout. When run
-inside the FO4 workspace, the build script resolves the workspace global
-CommonLibF4 profile. It also accepts `COMMONLIBF4_PATH` or an explicit
-`-CommonLibF4Path`; it never clones a project-local CommonLibF4:
+Run the project wrapper, which delegates to the workspace-locked C++ build entry:
 
 ```powershell
-.\scripts\build.ps1
+.\scripts\build.ps1 -Configuration releasedbg
 ```
 
-To use an explicit CommonLibF4 checkout:
+The build output stays under this project's `build/`. Copy verified runtime output into `data/` only as a separate staging step. Do not copy files into the game directory or MO2 from this project script.
 
-```powershell
-.\scripts\build.ps1 -CommonLibF4Path D:\path\to\commonlibf4
-```
+## Git
 
-The default native build uses the ImGui editor. The alternate Prisma UI editor
-implementation under `src/GUIEditor` is retained as source but excluded by the
-default XMake target.
-
-## Integration
-
-Dependent F4SE plugins can include `src/IIF_API.h` and register cards or combat
-modifiers through the F4SE messaging interface. Default JSON rules are loaded
-from:
-
-```text
-Data/F4SE/Plugins/ItemIntegrationFramework
-```
-
-See `docs/examples` and the configuration files for supported card schemas.
-
-## License
-
-Original IIF source is released under GPL-3.0-only. Built binaries also contain
-`commonlib-shared` code distributed under GPL-3.0 with the CommonLib Modding
-Exception. Vendored Xbyak remains under its BSD-3-Clause license. Third-party
-compatibility patch bases remain subject to their respective terms. See
-`COPYRIGHT`, `THIRD_PARTY_NOTICES.md`, and `licenses/commonlib-shared`.
+This project is an independent Git repository. `main` follows the GitHub repository; `local` contains the imported second-generation workspace snapshot. GitHub branches are retained as `origin/*` remote-tracking branches. Publishing remains manual.

@@ -1,0 +1,89 @@
+{
+  "global": {
+    "id": "Dynamic_Charge_Bar",
+    "priority": 750,
+    
+    // 👑 [关键枚举] 1 代表启动“动态仪表盘”模式
+    "displayType": 1, 
+    
+    // 👑 Type 1 同样完美支持锚点引擎！
+    "anchorTarget": "$ammo",   // 锚定在原版弹药的下方
+    "anchorMode": "after",     //
+    
+    "hasBackground": false,
+    "content": {
+      "title": { "text": "核心能量", "highlight": false }
+    }
+  },
+
+  "DataRules": [
+    
+    // =======================================================================
+    // 场景 1：经典纯图形模式 (黑魂血条风格)
+    // =======================================================================
+    {
+      "comment": "只显示进度条，彻底隐藏数值文本",
+      "ConditionType": "Form",
+      "ConditionIDs": ["MyMod.esp|0x111"],
+      "Result": {
+        "fillPct": 0.75,           // 主进度 75%
+        "shieldPct": 0.10,         // 额外护盾 10%
+        "fillColor": "0x00FF00",   
+        "showBar": true,           
+        "showValue": false         
+      }
+    },
+
+    // =======================================================================
+    // 场景 2：现代混合模式 (智能手机电池风格)
+    // =======================================================================
+    {
+      "comment": "进度条铺底，文字悬浮在正中间",
+      "ConditionType": "Form",
+      "ConditionIDs": ["MyMod.esp|0x222"],
+      "Result": {
+        "fillPct": 0.50,
+        "fillColor": "0xFFaa00",   
+        "showBar": true,           
+        "showValue": true,         
+        "valueText": "50% 稳定",   
+        "valueAlign": "center",    
+        "valueStandard": true      // 👑 强制白色标准色，防止被背景淹没
+      }
+    },
+
+    // =======================================================================
+    // 场景 3：纯文本宽屏占位模式
+    // =======================================================================
+    {
+      "comment": "隐藏图形，只留下可以任意对齐的宽屏文本框",
+      "ConditionType": "Form",
+      "ConditionIDs": ["MyMod.esp|0x333"],
+      "Result": {
+        "showBar": false,          
+        "showValue": true,         
+        "valueText": "系统已离线，需要重新校准充能矩阵", 
+        "valueAlign": "left",      
+        "state": "bad"             
+      }
+    },
+
+    // =======================================================================
+    // 场景 4：动态数值提取模式 & 自动计算百分比
+    // =======================================================================
+    {
+      "comment": "不写 fillPct，让引擎用 DataSource 抓出的数字自动算进度",
+      "ConditionType": "Form",
+      "ConditionIDs": ["MyMod.esp|0x444"],
+      "Result": {
+        "showBar": true,           
+        "showValue": true,         
+        "valueAlign": "right",     
+        "DataSource": {
+          "Type": "Form",
+          "ID": "Fallout4.esm|0x32E" 
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+    "DataRules": [
+        {
+            "ConditionIDs": [
+                "Weapon"
+            ],
+            "ConditionType": "FormType",
+            "Result": {
+                "DataSource": {
+                    "ID": "SightedTransitionSeconds",
+                    "Type": "WeaponStat"
+                },
+                "state": "normal"
+            }
+        }
+    ],
+    "global": {
+        "anchorMode": "after",
+        "anchorTarget": "Stats_AimModelRecoilMinDegPerShot",
+        "content": {
+            "hasBackground": false,
+            "title": {
+                "highlight": false,
+                "text": "$IIF_SightTime"
+            }
+        },
+        "displayType": 0,
+        "hasBackground": false,
+        "id": "Stats_SightedTransitionSeconds",
+        "priority": 48
+    }
+}

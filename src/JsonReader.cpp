@@ -748,22 +748,61 @@ namespace IIF::JsonReader {
                             if (!weap) return 0.0f;
                             auto weapData = instance ? static_cast<RE::TESObjectWEAP::InstanceData*>(instance) : &weap->weaponData;
                             if (weapData) {
+                                // Some non-ranged weapon instances leave ranged-only/scalar fields
+                                // uninitialized. Do not expose those bit patterns to Scaleform.
+                                auto FinishWeaponStat = [&](float value) -> float {
+                                    if (!std::isfinite(value) || std::abs(value) > 100000.0f) {
+                                        success = false;
+                                        return 0.0f;
+                                    }
+                                    success = true;
+                                    return value;
+                                };
+
                                 // 🛡️ SEH防护：weapData 的 static_cast 可能指向类型不匹配的内存
                                 __try {
-                                    success = true;
-                                    if (ds.ID == "APCost") {
+                                    if (ds.ID == "APCost" || ds.ID == "AttackActionPointCost") {
                                         float val = weapData->attackActionPointCost;
-                                        return ApplyPerkModifier(static_cast<std::uint32_t>(RE::BGSEntryPoint::ENTRY_POINT::kModVATSAttackAP), val, weap);
+                                        return FinishWeaponStat(ApplyPerkModifier(static_cast<std::uint32_t>(RE::BGSEntryPoint::ENTRY_POINT::kModVATSAttackAP), val, weap));
                                     }
-                                    if (ds.ID == "Speed") return weapData->speed;
-                                    if (ds.ID == "Reach") return weapData->reach;
+                                    if (ds.ID == "Speed") {
+                                        return FinishWeaponStat(weapData->speed);
+                                    }
+                                    if (ds.ID == "Reach") {
+                                        return FinishWeaponStat(weapData->reach);
+                                    }
+                                    if (ds.ID == "SecondaryDamage") {
+                                        return FinishWeaponStat(weapData->secondaryDamage);
+                                    }
+                                    if (ds.ID == "AmmoCapacity") {
+                                        return FinishWeaponStat(static_cast<float>(weapData->ammoCapacity));
+                                    }
+                                    if (ds.ID == "ReloadSpeed") {
+                                        return FinishWeaponStat(weapData->reloadSpeed);
+                                    }
+                                    if (ds.ID == "SightedTransitionSeconds") {
+                                        if (!weapData->rangedData) return 0.0f;
+                                        return FinishWeaponStat(weapData->rangedData->sightedTransitionSeconds);
+                                    }
+                                    if (ds.ID == "AimModelRecoilMaxDegPerShot") {
+                                        if (!weapData->aimModel) return 0.0f;
+                                        return FinishWeaponStat(weapData->aimModel->aimModelData.aimModelRecoilMaxDegPerShot);
+                                    }
+                                    if (ds.ID == "AimModelRecoilMinDegPerShot") {
+                                        if (!weapData->aimModel) return 0.0f;
+                                        return FinishWeaponStat(weapData->aimModel->aimModelData.aimModelRecoilMinDegPerShot);
+                                    }
+                                    if (ds.ID == "ZoomDataFOVMult") {
+                                        if (!weapData->zoomData) return 0.0f;
+                                        return FinishWeaponStat(weapData->zoomData->zoomData.fovMult);
+                                    }
                                     if (ds.ID == "CritCharge") {
                                         float val = weapData->criticalChargeBonus;
-                                        return ApplyPerkModifier(static_cast<std::uint32_t>(RE::BGSEntryPoint::ENTRY_POINT::kModVATSCriticalCharge), val, weap);
+                                        return FinishWeaponStat(ApplyPerkModifier(static_cast<std::uint32_t>(RE::BGSEntryPoint::ENTRY_POINT::kModVATSCriticalCharge), val, weap));
                                     }
                                     if (ds.ID == "CritDamage") {
                                         float val = weapData->criticalDamageMult;
-                                        return ApplyPerkModifier(static_cast<std::uint32_t>(RE::BGSEntryPoint::ENTRY_POINT::kCalculateCriticalHitDamageMult), val, weap);
+                                        return FinishWeaponStat(ApplyPerkModifier(static_cast<std::uint32_t>(RE::BGSEntryPoint::ENTRY_POINT::kCalculateCriticalHitDamageMult), val, weap));
                                     }
                                 } __except (EXCEPTION_EXECUTE_HANDLER) {}
                             }
@@ -798,10 +837,10 @@ namespace IIF::JsonReader {
                                             auto omod = rawForm ? rawForm->As<RE::BGSMod::Attachment::Mod>() : nullptr;
                                             if (!omod) continue;
 
-                                            // 🛡️ SEH防护（内层）：omod->GetData() 和 propertyMods 迭代可能访问到损坏的游戏数据
+                                            // 🛡️ SEH防护（内层）：Container::GetData() 和 propertyMods 迭代可能访问到损坏的游戏数据
                                             __try {
-                                                RE::BGSMod::Attachment::Mod::Data omodData;
-                                                omod->GetData(omodData);
+                                                RE::BGSMod::Container::Data omodData{};
+                                                static_cast<const RE::BGSMod::Container*>(omod)->GetData(&omodData);
                                                 // 🛡️ 防御: propertyMods 为空但计数>0时跳过，或计数明显异常时跳过
                                                 if (!omodData.propertyMods || omodData.propertyModCount > 512 || omodData.propertyModCount == 0) continue;
                                                 for (std::uint32_t i = 0; i < omodData.propertyModCount; ++i) {
@@ -862,10 +901,10 @@ namespace IIF::JsonReader {
 
                                             if (!isAny && targetOmodForm && omod->GetFormID() != targetOmodForm->GetFormID()) continue;
 
-                                            // 🛡️ SEH防护（内层）：omod->GetData() 和 propertyMods 迭代
+                                            // 🛡️ SEH防护（内层）：Container::GetData() 和 propertyMods 迭代
                                             __try {
-                                                RE::BGSMod::Attachment::Mod::Data omodData;
-                                                omod->GetData(omodData);
+                                                RE::BGSMod::Container::Data omodData{};
+                                                static_cast<const RE::BGSMod::Container*>(omod)->GetData(&omodData);
                                                 // 🛡️ 防御: propertyMods 为空但计数>0时跳过，或计数明显异常时跳过
                                                 if (!omodData.propertyMods || omodData.propertyModCount > 512 || omodData.propertyModCount == 0) continue;
                                                 for (std::uint32_t i = 0; i < omodData.propertyModCount; ++i) {
@@ -918,8 +957,35 @@ namespace IIF::JsonReader {
                     return 0.0f;
                     };
 
+                auto GetNonOGWeaponDiff = [&](const DataSource& ds, float previewVal, float multiplier, float& outDiff, bool& outHasDiff) {
+                    auto* player = RE::PlayerCharacter::GetSingleton();
+                    if (!player) return;
+
+                    for (std::uint32_t equipIndex = 0; equipIndex < 2; ++equipIndex) {
+                        RE::BGSObjectInstance equipped(nullptr, nullptr);
+                        auto* result = player->GetEquippedItem(&equipped, RE::BGSEquipIndex{ equipIndex });
+                        if (!result || !equipped.object || !equipped.object->Is(RE::ENUM_FORM_ID::kWEAP)) continue;
+
+                        bool eSuccess = false;
+                        float eqVal = ExtractFloatValue(ds, equipped.object, nullptr, equipped.instanceData.get(), 0, eSuccess);
+                        if (eSuccess) {
+                            outDiff = (previewVal - eqVal) * multiplier;
+                            outHasDiff = true;
+                        }
+                        return;
+                    }
+                };
+
                 // 🛡️ 独立 lambda：安全获取已装备物品的对比差值（所有局部变量均为POD，无析构函数，避免C2712）
                 auto SafeGetEquippedDiff = [&](RE::TESBoundObject* boundObj, const DataSource& ds, float previewVal, float multiplier, float& outDiff, bool& outHasDiff) {
+                    // CommonLibF4 marks UIUtils::GetComparisonItems as inlined on NG/AE.
+                    // Use the version-stable Actor API for weapon stats on those runtimes.
+                    if (!REX::FModule::IsRuntimeOG()) {
+                        if (!boundObj || !boundObj->Is(RE::ENUM_FORM_ID::kWEAP) || ds.Type != "WeaponStat") return;
+                        GetNonOGWeaponDiff(ds, previewVal, multiplier, outDiff, outHasDiff);
+                        return;
+                    }
+
                     auto* compItems = new RE::UIUtils::ComparisonItems();
                     bool compOk = false;
                     __try { RE::UIUtils::GetComparisonItems(boundObj, *compItems); compOk = true; }
@@ -943,7 +1009,7 @@ namespace IIF::JsonReader {
                     delete compItems;
                 };
 
-                auto ResolveBox = [&](const BoxConfig& globalBox, const BoxConfig& localBox, std::string& outTag, bool& outIsIcon, std::string& outVal, bool& outBad, bool& outGood, bool& outStandard, std::string& outAlign, bool& outHasRaw, double& outRaw, float& outDifference, bool& outHasDiff) {
+                auto ResolveBox = [&](const BoxConfig& globalBox, const BoxConfig& localBox, std::string& outTag, bool& outIsIcon, std::string& outVal, bool& outBad, bool& outGood, bool& outStandard, std::string& outAlign, bool& outHasRaw, double& outRaw, float& outDifference, bool& outHasDiff) -> bool {
                     BoxConfig finalBox = globalBox;
                     if (localBox.active) {
                         if (!localBox.tag.empty()) finalBox.tag = localBox.tag;
@@ -958,6 +1024,12 @@ namespace IIF::JsonReader {
                     if (finalBox.dataSource.active) {
                         bool pSuccess = false;
                         float previewVal = ExtractFloatValue(finalBox.dataSource, a_form, a_item, a_instance, a_stackID, pSuccess);
+
+                        if (!pSuccess) {
+                            // A failed pointer-backed lookup must not create a card with
+                            // an empty GFx value, which Scaleform renders as "undefined".
+                            return false;
+                        }
 
                         if (pSuccess) {
                             float finalPreviewVal = (previewVal + finalBox.dataSource.Offset) * finalBox.dataSource.Multiplier;
@@ -991,9 +1063,13 @@ namespace IIF::JsonReader {
                                 }
                             }
 
-                            if (std::abs(outDifference) < 0.001f) {
-                                outDifference = 0.0f;
-                                outHasDiff = false;
+                            if (outHasDiff) {
+                                // Match FormatValue/ItemCard's one-decimal display precision.
+                                outDifference = std::round(outDifference * 10.0f) / 10.0f;
+                                if (outDifference == 0.0f) {
+                                    outDifference = 0.0f;
+                                    outHasDiff = false;
+                                }
                             }
                         }
                     }
@@ -1017,13 +1093,15 @@ namespace IIF::JsonReader {
                     outVal = currentVal;
                     outBad = (finalBox.state == "bad"); outGood = (finalBox.state == "good"); outStandard = (finalBox.state == "standard");
                     outAlign = finalBox.align.empty() ? "right" : finalBox.align;
+                    return true;
                     };
 
                 bool leftHasRaw = false; double leftRaw = 0; float leftDiff = 0.0f; bool leftHasDiff = false;
                 bool rightHasRaw = false; double rightRaw = 0; float rightDiff = 0.0f; bool rightHasDiff = false;
 
-                ResolveBox(rule.globalLeftBox, targetResult.leftBox, ic.icon1, ic.icon1IsText, ic.val1, ic.val1Bad, ic.val1Good, ic.val1Standard, ic.align1, leftHasRaw, leftRaw, leftDiff, leftHasDiff);
-                ResolveBox(rule.globalRightBox, targetResult.rightBox, ic.icon2, ic.icon2IsText, ic.val2, ic.val2Bad, ic.val2Good, ic.val2Standard, ic.align2, rightHasRaw, rightRaw, rightDiff, rightHasDiff);
+                bool leftResolved = ResolveBox(rule.globalLeftBox, targetResult.leftBox, ic.icon1, ic.icon1IsText, ic.val1, ic.val1Bad, ic.val1Good, ic.val1Standard, ic.align1, leftHasRaw, leftRaw, leftDiff, leftHasDiff);
+                bool rightResolved = ResolveBox(rule.globalRightBox, targetResult.rightBox, ic.icon2, ic.icon2IsText, ic.val2, ic.val2Bad, ic.val2Good, ic.val2Standard, ic.align2, rightHasRaw, rightRaw, rightDiff, rightHasDiff);
+                if (!leftResolved || !rightResolved) continue;
 
                 ic.hasRawValue = rightHasRaw ? rightHasRaw : leftHasRaw;
                 ic.rawValue = rightHasRaw ? rightRaw : leftRaw;
