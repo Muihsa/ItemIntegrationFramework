@@ -115,4 +115,3 @@ namespace IIF::CombatBus {
 		std::atomic<SnapshotHandle> _snapshot;
 	};
 }
-

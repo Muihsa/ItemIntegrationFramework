@@ -109,7 +109,6 @@ namespace {
 		return snapshot;
 	}
 }
-
 int main()
 {
 	using namespace IIF_API::CombatBus;
@@ -327,4 +326,3 @@ int main()
 	std::cout << "CombatBusRegistry fixtures passed: event isolation, ordering, ownership, snapshot lifetime, reentry, and concurrent publication.\n";
 	return 0;
 }
-
