@@ -1,6 +1,6 @@
 ﻿-- ItemIntegrationFramework xmake project
 local plugin_name = "ItemIntegrationFramework"
-local plugin_version = "1.0.5"
+local plugin_version = "1.1.0"
 includes(path.join(os.scriptdir(), "..", "..", "shared", "xmake", "commonlibf4.lua"))
 local commonlibf4_path = resolve_commonlib4(os.scriptdir())
 if not commonlibf4_path then

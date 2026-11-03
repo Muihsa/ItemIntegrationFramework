@@ -2,6 +2,7 @@
 #include "UIHooks.h"
 #include "JsonReader.h"
 #include "IIF_API.h"
+#include "ItemCardData.h"
 
 #define XBYAK_NO_OP_NAMES 
 #include <xbyak/xbyak.h>
@@ -83,9 +84,77 @@ namespace IIF::Hooks
 		if (targetID) g_pendingMods.push_back({ targetID, multiplier });
 	}
 
-	void RebuildUIArray(Scaleform::GFx::Value& a_array, std::uint32_t newCardCount) {
+	ItemCardData::ValueSnapshot ReadValueSnapshot(const Scaleform::GFx::Value& a_card) {
+		ItemCardData::ValueSnapshot result;
+		if (!a_card.IsObject()) return result;
+
+		Scaleform::GFx::Value value;
+		if (!a_card.GetMember("value", &value)) return result;
+		if (value.IsNumber()) {
+			result.type = IIF_API::ItemCardValueType::kNumber;
+			result.number = value.GetNumber();
+		}
+		else if (value.IsInt()) {
+			result.type = IIF_API::ItemCardValueType::kNumber;
+			result.number = static_cast<double>(value.GetInt());
+		}
+		else if (value.IsUInt()) {
+			result.type = IIF_API::ItemCardValueType::kNumber;
+			result.number = static_cast<double>(value.GetUInt());
+		}
+		else if (value.IsString()) {
+			result.type = IIF_API::ItemCardValueType::kString;
+			if (const char* text = value.GetString()) result.text = text;
+		}
+		return result;
+	}
+
+	std::string ReadStringMember(const Scaleform::GFx::Value& a_card, const char* a_name) {
+		if (!a_card.IsObject()) return {};
+		Scaleform::GFx::Value value;
+		if (!a_card.GetMember(a_name, &value) || !value.IsString()) return {};
+		const char* text = value.GetString();
+		return text ? text : "";
+	}
+
+	std::int32_t ReadDisplayType(const Scaleform::GFx::Value& a_card) {
+		if (!a_card.IsObject()) return 0;
+		Scaleform::GFx::Value value;
+		if (!a_card.GetMember("displayType", &value)) return 0;
+		if (value.IsInt()) return value.GetInt();
+		if (value.IsUInt()) return static_cast<std::int32_t>(value.GetUInt());
+		if (value.IsNumber()) return static_cast<std::int32_t>(value.GetNumber());
+		return 0;
+	}
+
+	bool IsInjectedCard(const Scaleform::GFx::Value& a_card) {
+		if (!a_card.IsObject()) return false;
+		Scaleform::GFx::Value value;
+		return a_card.GetMember("IIF_Injected", &value) && value.IsBoolean() && value.GetBoolean();
+	}
+
+	void BroadcastItemCardData(const IIF_API::UpdateMessage& a_update, const std::vector<ItemCardData::Entry>& a_snapshots) {
+		if (a_snapshots.empty()) return;
+		auto messaging = F4SE::GetMessagingInterface();
+		if (!messaging) return;
+
+		auto entries = ItemCardData::BindEntries(a_snapshots);
+		IIF_API::ItemCardDataMessage message;
+		message.structSize = sizeof(message);
+		message.itemForm = a_update.itemForm;
+		message.inventoryItem = a_update.inventoryItem;
+		message.instanceData = a_update.instanceData;
+		message.entries = entries.data();
+		message.stackIndex = a_update.stackIndex;
+		message.itemHandleID = a_update.itemHandleID;
+		message.entryCount = static_cast<std::uint32_t>(entries.size());
+		message.entrySize = sizeof(IIF_API::ItemCardDataEntry);
+		messaging->Dispatch(IIF_API::kMessage_ItemCardDataReady, &message, sizeof(message), nullptr);
+	}
+
+	void RebuildUIArray(Scaleform::GFx::Value& a_array, std::uint32_t newCardCount, const IIF_API::UpdateMessage& a_update) {
 		std::uint32_t totalSize = a_array.GetArraySize();
-		if (totalSize <= newCardCount) return;
+		if (totalSize == 0 || totalSize < newCardCount) return;
 		std::uint32_t origSize = totalSize - newCardCount;
 
 		// ==========================================
@@ -242,10 +311,14 @@ namespace IIF::Hooks
 		// finalLayout里已经是排好序的终极卡片列表了！
 		// 我们在这里修改数值，绝对不可能干扰到你前面的任何排序提取！
 		// ========================================================
+		std::vector<ItemCardData::Entry> snapshots;
+		snapshots.reserve(finalLayout.size());
 		for (auto& e : finalLayout) {
-			std::string vId = GetCardID(e);
+			ItemCardData::Entry snapshot;
+			snapshot.id = GetCardID(e);
+			snapshot.originalValue = ReadValueSnapshot(e);
 			for (const auto& mod : g_pendingMods) {
-				if (!mod.targetID.empty() && vId == mod.targetID) {
+				if (!mod.targetID.empty() && snapshot.id == mod.targetID) {
 					Scaleform::GFx::Value valObj;
 					if (e.GetMember("value", &valObj)) {
 						double num = 0.0;
@@ -260,10 +333,21 @@ namespace IIF::Hooks
 					}
 				}
 			}
+			snapshot.finalValue = ReadValueSnapshot(e);
+			snapshot.label = ReadStringMember(e, "label");
+			snapshot.valueText = ReadStringMember(e, "valueText");
+			snapshot.val1 = ReadStringMember(e, "val1");
+			snapshot.val2 = ReadStringMember(e, "val2");
+			snapshot.displayType = ReadDisplayType(e);
+			if (IsInjectedCard(e)) snapshot.flags |= IIF_API::kItemCardDataFlag_Injected;
+			snapshots.push_back(std::move(snapshot));
 		}
 
-		a_array.RemoveElements(0, totalSize);
-		for (auto& e : finalLayout) { a_array.PushBack(e); }
+		BroadcastItemCardData(a_update, snapshots);
+		if (!g_pendingCards.empty() || !g_pendingMods.empty()) {
+			a_array.RemoveElements(0, totalSize);
+			for (auto& e : finalLayout) { a_array.PushBack(e); }
+		}
 	}
 
 	void DispatchAndInject(Scaleform::GFx::Movie* movie, Scaleform::GFx::Value& a_array, RE::TESForm* form, RE::BGSInventoryItem* item, RE::TBO_InstanceData* instance, std::uint32_t stackIdx, std::uint32_t handleID) {
@@ -280,8 +364,6 @@ namespace IIF::Hooks
 		if (messaging) messaging->Dispatch(IIF_API::kMessage_UpdateItemCard, &msg, sizeof(msg), nullptr);
 
 		IIF::JsonReader::EvaluateItemRules(form, item, instance, stackIdx);
-
-		if (g_pendingCards.empty() && g_pendingMods.empty()) return;
 
 		std::uint32_t newCardCount = static_cast<std::uint32_t>(g_pendingCards.size());
 		for (const auto& card : g_pendingCards) {
@@ -340,7 +422,7 @@ namespace IIF::Hooks
 				if (!card.align2.empty()) reqEntry.SetMember("align2", Scaleform::GFx::Value(card.align2.c_str()));
 			}
 		}
-		RebuildUIArray(a_array, newCardCount);
+		RebuildUIArray(a_array, newCardCount, msg);
 	}
 
 	using PBInv_t = void(*)(void*, ScaleArgs*); static PBInv_t _PBInv = nullptr;

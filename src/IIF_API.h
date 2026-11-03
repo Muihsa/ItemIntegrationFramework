@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <vector>
 #include <F4SE/Interfaces.h>
+#include "IIF_ItemCardDataAPI.h"
 
 namespace RE { class Actor; class TESObjectWEAP; }
 
