@@ -21,6 +21,24 @@
     "hideDifference": false,       // [New] Hide comparison difference? false = shows red/green diff like (+5.0).
     "invertDiffColor": false,      // [New] Invert diff red/green logic? (true=positive red, negative green, ideal for AP Cost).
 
+    // [New] Menu whitelist: controls in which item menus this card is shown.
+    // Omit the key (or leave the list empty) to show the card in every menu.
+    // Recognised names: ExamineMenu, PipboyMenu, BarterMenu, ContainerMenu.
+    // Short forms and any letter case also work; other names are queried as-is
+    // (e.g. "CraftingMenu"). Keep verbose stats on the examine/workbench screen only,
+    // so the narrow Pipboy list does not get flooded:
+    //   "menus": ["ExamineMenu"],
+    // An object form is accepted as well:
+    //   "menus": { "ExamineMenu": true, "PipboyMenu": false, "BarterMenu": false, "ContainerMenu": false },
+    // A DataRules entry may carry its own "menus" and overrides this one.
+
+    // [New] Number of decimals for the final displayed value (after Offset/Multiplier,
+    // also applied to the red/green difference). -1 or omitted = auto
+    // (integers stay integers, everything else 1 decimal). 0~6 = round to that many
+    // decimals (rounding only: the game formatter drops trailing zeros, 1.5 stays "1.5").
+    // Can also be set inside a DataSource, where it wins over this rule-level value.
+    "roundDigits": -1,
+
     "content": {
       "title": { 
         "text": "Attribute Name",  // Text displayed on the left, supports localized tags (e.g., "$acc").

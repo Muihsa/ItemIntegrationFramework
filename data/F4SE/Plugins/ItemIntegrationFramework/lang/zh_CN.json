@@ -42,5 +42,13 @@
     "UI_StateGood": "增益绿 (Good)",
     "UI_StateBad": "警告红 (Bad)",
     "UI_HasBackgroundDesc": "(?) 像弹药/伤害卡片那样的特殊灰色底板（注意：哔哔小子里强制不显示底板）",
-    "UI_BackgroundColor": "自定义底板颜色"
+    "UI_BackgroundColor": "自定义底板颜色",
+    "UI_RoundDigits": "显示小数位数 (roundDigits)",
+    "UI_RoundDigitsHint": "(?) -1 = 自动（整数不带小数点，其余保留 1 位）。0~6 = 四舍五入到该位数。DataSource 内的 roundDigits 优先。",
+    "UI_Menus": "显示菜单 (menus)",
+    "UI_MenuExamine": "改造/查看",
+    "UI_MenuPipboy": "哔哔小子",
+    "UI_MenuBarter": "交易",
+    "UI_MenuContainer": "容器",
+    "UI_MenusHint": "(?) 全部不勾选 = 所有菜单都显示；勾选后只在这些菜单显示。"
 }

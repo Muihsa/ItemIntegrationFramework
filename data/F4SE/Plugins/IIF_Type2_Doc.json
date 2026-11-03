@@ -123,8 +123,9 @@
         // 👑 [Enum] Ultimate DataSource Types (DataSource.Type):
         // "Form"               = Global Variables (GLOB) & live ActorValues.
         // "PerkRank"           = Extracts skill progress (Formatted as "Current/Max").
-        // "WeaponStat"         = Auto-fetches underlying physical attributes (ID: "APCost", "Speed", "Reach").
+        // "WeaponStat"         = Auto-fetches underlying physical attributes (ID: "APCost", "Speed", "Reach", "AimModelRecoilArcDeg", ...).
         // "OMODMagicMagnitude" = Safe magic magnitude unpacker (ID: "ANY" for all, or specify OMOD ID).
+        // [New] Optional "roundDigits": 0~6 fixed decimals; -1/omitted = auto. Wins over the rule-level roundDigits.
         "DataSource": {
           "Type": "WeaponStat",
           "ID": "APCost" 

@@ -1,0 +1,36 @@
+{
+    "DataRules": [
+        {
+            "ConditionIDs": [
+                "Weapon"
+            ],
+            "ConditionType": "FormType",
+            "Result": {
+                "DataSource": {
+                    "ID": "AimModelMaxConeDegrees",
+                    "Type": "WeaponStat",
+                    "roundDigits": 2
+                },
+                "state": "normal"
+            }
+        }
+    ],
+    "global": {
+        "anchorMode": "after",
+        "anchorTarget": "Stats_AimModelRecoilArcRotateDeg",
+        "content": {
+            "hasBackground": false,
+            "title": {
+                "highlight": false,
+                "text": "$IIF_ConeMax"
+            }
+        },
+        "displayType": 0,
+        "hasBackground": false,
+        "id": "Stats_AimModelMaxConeDegrees",
+        "menus": [
+            "ExamineMenu"
+        ],
+        "priority": 50
+    }
+}

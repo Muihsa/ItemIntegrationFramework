@@ -1,0 +1,36 @@
+{
+    "DataRules": [
+        {
+            "ConditionIDs": [
+                "Weapon"
+            ],
+            "ConditionType": "FormType",
+            "Result": {
+                "DataSource": {
+                    "ID": "AimModelMinConeDegrees",
+                    "Type": "WeaponStat",
+                    "roundDigits": 2
+                },
+                "state": "normal"
+            }
+        }
+    ],
+    "global": {
+        "anchorMode": "after",
+        "anchorTarget": "Stats_AimModelMaxConeDegrees",
+        "content": {
+            "hasBackground": false,
+            "title": {
+                "highlight": false,
+                "text": "$IIF_ConeMin"
+            }
+        },
+        "displayType": 0,
+        "hasBackground": false,
+        "id": "Stats_AimModelMinConeDegrees",
+        "menus": [
+            "ExamineMenu"
+        ],
+        "priority": 51
+    }
+}

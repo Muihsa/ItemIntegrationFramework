@@ -42,5 +42,13 @@
     "UI_StateGood": "Positive",
     "UI_StateBad": "Warning",
     "UI_HasBackgroundDesc": "(?) A special gray panel like Ammo and Damage cards. (Note: some modes may force background off)",
-    "UI_BackgroundColor": "Custom Background Color"
+    "UI_BackgroundColor": "Custom Background Color",
+    "UI_RoundDigits": "Display Decimals (roundDigits)",
+    "UI_RoundDigitsHint": "(?) -1 = Auto (whole numbers for integers, otherwise 1 decimal). 0-6 = round to that many decimals. DataSource.roundDigits wins over this.",
+    "UI_Menus": "Visible Menus (menus)",
+    "UI_MenuExamine": "Examine",
+    "UI_MenuPipboy": "Pipboy",
+    "UI_MenuBarter": "Barter",
+    "UI_MenuContainer": "Container",
+    "UI_MenusHint": "(?) Leave every box unchecked = show in all menus. Checked boxes become a whitelist."
 }

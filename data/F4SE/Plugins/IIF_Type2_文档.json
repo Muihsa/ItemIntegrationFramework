@@ -117,8 +117,9 @@
         // 👑 [数据源类型说明]：
         // "Form"               = 全局变量(GLOB)、活体 ActorValue。
         // "PerkRank"           = 提取技能进度 (Required/Max)。
-        // "WeaponStat"         = 抓取底层物理属性 (ID填 "APCost", "Speed", "Reach")。
+        // "WeaponStat"         = 抓取底层物理属性 (ID填 "APCost", "Speed", "Reach", "AimModelRecoilArcDeg" 等)。
         // "OMODMagicMagnitude" = 安全拆解魔法加成 (ID填 "ANY" 或指定 OMOD ID)。
+        // [新增] 可选字段 "roundDigits": 0~6 固定小数位数；-1 或不写 = 自动。优先级高于规则级 roundDigits。
         "DataSource": {
           "Type": "WeaponStat",
           "ID": "APCost" 

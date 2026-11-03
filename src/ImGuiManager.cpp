@@ -973,6 +973,47 @@ namespace IIF::UI
                                 ImGui::Combo(_L("UI_DisplayType"), &rule.displayType, dTypes, 3);
                                 ImGui::Checkbox(_L("UI_HighlightLabel"), &rule.highlightLabel);
                                 ImGui::Checkbox(_L("UI_HasBackground"), &rule.hasBackground);
+
+                                if (ImGui::InputInt(_L("UI_RoundDigits"), &rule.roundDigits)) {
+                                    if (rule.roundDigits < -1) rule.roundDigits = -1;
+                                    if (rule.roundDigits > 6) rule.roundDigits = 6;
+                                }
+                                ImGui::TextDisabled("%s", _L("UI_RoundDigitsHint"));
+
+                                if (ImGui::TreeNodeEx(_L("UI_Menus"), ImGuiTreeNodeFlags_DefaultOpen)) {
+                                    const char* menuKeys[] = { "ExamineMenu", "PipboyMenu", "BarterMenu", "ContainerMenu" };
+                                    const char* menuLabels[] = { _L("UI_MenuExamine"), _L("UI_MenuPipboy"), _L("UI_MenuBarter"), _L("UI_MenuContainer") };
+                                    for (int m = 0; m < 4; ++m) {
+                                        bool on = std::find(rule.menus.begin(), rule.menus.end(), menuKeys[m]) != rule.menus.end();
+                                        if (ImGui::Checkbox(menuLabels[m], &on)) {
+                                            if (on) rule.menus.push_back(menuKeys[m]);
+                                            else rule.menus.erase(std::remove(rule.menus.begin(), rule.menus.end(), menuKeys[m]), rule.menus.end());
+
+                                            // 四个标准菜单按固定顺序重排，用户手写的其它菜单名（如 CraftingMenu）保留在后面
+                                            std::vector<std::string> ordered;
+                                            for (const char* k : menuKeys) {
+                                                if (std::find(rule.menus.begin(), rule.menus.end(), k) != rule.menus.end()) ordered.push_back(k);
+                                            }
+                                            for (const auto& name : rule.menus) {
+                                                if (std::find(ordered.begin(), ordered.end(), name) == ordered.end()) ordered.push_back(name);
+                                            }
+                                            rule.menus = std::move(ordered);
+                                            rule.hasMenus = !rule.menus.empty();
+                                        }
+                                        if (m < 3) ImGui::SameLine();
+                                    }
+                                    if (rule.hasMenus) {
+                                        std::string extraMenus;
+                                        for (const auto& name : rule.menus) {
+                                            bool isStandard = false;
+                                            for (const char* k : menuKeys) { if (name == k) { isStandard = true; break; } }
+                                            if (!isStandard) extraMenus += (extraMenus.empty() ? "" : ", ") + name;
+                                        }
+                                        if (!extraMenus.empty()) ImGui::TextDisabled("+ %s", extraMenus.c_str());
+                                    }
+                                    ImGui::TextDisabled("%s", _L("UI_MenusHint"));
+                                    ImGui::TreePop();
+                                }
                             }
 
                             if (rule.displayType == 0 || rule.displayType == 1) {

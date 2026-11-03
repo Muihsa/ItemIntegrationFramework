@@ -1,0 +1,36 @@
+{
+    "DataRules": [
+        {
+            "ConditionIDs": [
+                "Weapon"
+            ],
+            "ConditionType": "FormType",
+            "Result": {
+                "DataSource": {
+                    "ID": "AimModelConeIronSightsMultiplier",
+                    "Type": "WeaponStat",
+                    "roundDigits": 2
+                },
+                "state": "normal"
+            }
+        }
+    ],
+    "global": {
+        "anchorMode": "after",
+        "anchorTarget": "Stats_AimModelMinConeDegrees",
+        "content": {
+            "hasBackground": false,
+            "title": {
+                "highlight": false,
+                "text": "$IIF_ConeIronSights"
+            }
+        },
+        "displayType": 0,
+        "hasBackground": false,
+        "id": "Stats_AimModelConeIronSightsMultiplier",
+        "menus": [
+            "ExamineMenu"
+        ],
+        "priority": 52
+    }
+}

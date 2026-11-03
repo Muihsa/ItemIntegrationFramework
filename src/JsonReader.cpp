@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <cmath>
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <iomanip>
 
@@ -15,16 +16,21 @@ namespace IIF::JsonReader {
 
     using json = nlohmann::json;
 
-    bool ParseBoolSafe(const json& j, const std::string& key, bool defaultVal = false) {
-        if (!j.contains(key)) return defaultVal;
-        if (j[key].is_boolean()) return j[key].get<bool>();
-        if (j[key].is_number_integer()) return j[key].get<int>() > 0;
-        if (j[key].is_string()) {
-            std::string s = j[key].get<std::string>();
+    bool ToBoolSafe(const json& v, bool defaultVal = false) {
+        if (v.is_boolean()) return v.get<bool>();
+        if (v.is_number_integer()) return v.get<int>() > 0;
+        if (v.is_number_float()) return v.get<double>() > 0.0;
+        if (v.is_string()) {
+            std::string s = v.get<std::string>();
             std::transform(s.begin(), s.end(), s.begin(), ::tolower);
             return (s == "true" || s == "1");
         }
         return defaultVal;
+    }
+
+    bool ParseBoolSafe(const json& j, const std::string& key, bool defaultVal = false) {
+        if (!j.contains(key)) return defaultVal;
+        return ToBoolSafe(j[key], defaultVal);
     }
 
     int ParseTriStateSafe(const json& j, const std::string& key) {
@@ -37,6 +43,69 @@ namespace IIF::JsonReader {
             return (s == "true" || s == "1") ? 1 : 0;
         }
         return -1;
+    }
+
+    // 最终显示数值的小数位数：-1 / 缺省 = 自动，0~6 = 固定位数
+    int ParseRoundDigitsSafe(const json& j, const std::string& key, int defaultVal = -1) {
+        if (!j.contains(key)) return defaultVal;
+        const auto& v = j[key];
+        int digits = defaultVal;
+        if (v.is_number_integer()) digits = v.get<int>();
+        else if (v.is_number_float()) digits = static_cast<int>(std::round(v.get<double>()));
+        else if (v.is_string()) {
+            try { digits = std::stoi(v.get<std::string>()); }
+            catch (...) { return defaultVal; }
+        }
+        else return defaultVal;
+        if (digits < -1) return -1;
+        return (std::min)(digits, 6);
+    }
+
+    // 把 "ExamineMenu" / "examine" / "Examine" 统一成 "examine"，便于宽松匹配
+    std::string NormalizeMenuToken(std::string a_text) {
+        std::string out;
+        for (char c : a_text) {
+            const unsigned char uc = static_cast<unsigned char>(c);
+            if (std::isalnum(uc)) out.push_back(static_cast<char>(std::tolower(uc)));
+        }
+        if (out.size() > 4 && out.compare(out.size() - 4, 4, "menu") == 0) out.resize(out.size() - 4);
+        return out;
+    }
+
+    // 简写 -> 真实菜单名；无法识别的名字原样返回，方便直接写 "CraftingMenu" 之类的菜单
+    std::string CanonicalMenuName(const std::string& a_token) {
+        const std::string t = NormalizeMenuToken(a_token);
+        if (t == "examine") return "ExamineMenu";
+        if (t == "pipboy") return "PipboyMenu";
+        if (t == "barter") return "BarterMenu";
+        if (t == "container") return "ContainerMenu";
+        return a_token;
+    }
+
+    // 菜单白名单：支持 ["ExamineMenu"] 数组、{"ExamineMenu": true} 对象、单个字符串三种写法。
+    // 缺省或空列表 = 不限制菜单。
+    void ParseMenusSafe(const json& j, const std::string& key, std::vector<std::string>& out, bool& has) {
+        if (!j.contains(key)) return;
+        const auto& v = j[key];
+        std::vector<std::string> parsed;
+        if (v.is_array()) {
+            for (const auto& item : v) if (item.is_string()) parsed.push_back(item.get<std::string>());
+        }
+        else if (v.is_object()) {
+            for (auto& el : v.items()) if (ToBoolSafe(el.value(), false)) parsed.push_back(el.key());
+        }
+        else if (v.is_string()) {
+            parsed.push_back(v.get<std::string>());
+        }
+        if (parsed.empty()) return;
+
+        // 存成真实菜单名，运行时直接交给 UI::GetMenuOpen 查询
+        out.clear();
+        for (auto& name : parsed) {
+            const std::string canonical = CanonicalMenuName(name);
+            if (std::find(out.begin(), out.end(), canonical) == out.end()) out.push_back(canonical);
+        }
+        has = !out.empty();
     }
 
     std::uint32_t ParseHexColor(const json& j) {
@@ -70,6 +139,7 @@ namespace IIF::JsonReader {
         ds["Offset"] = source.Offset;
         ds["Multiplier"] = source.Multiplier;
         ds["Suffix"] = source.Suffix;
+        if (source.roundDigits >= 0) ds["roundDigits"] = source.roundDigits;
         return ds;
     }
 
@@ -155,6 +225,8 @@ namespace IIF::JsonReader {
         if (!rule.conditionType.empty()) outRule["ConditionType"] = rule.conditionType;
         if (!rule.matchType.empty()) outRule["MatchType"] = rule.matchType;
         if (!rule.conditionIDs.empty()) outRule["ConditionIDs"] = rule.conditionIDs;
+        if (rule.hasMenus && !rule.menus.empty()) outRule["menus"] = rule.menus;
+        if (rule.roundDigits >= 0) outRule["roundDigits"] = rule.roundDigits;
         if (!rule.valuesMapping.empty()) {
             json mapping = json::object();
             for (const auto& pair : rule.valuesMapping) {
@@ -212,6 +284,12 @@ namespace IIF::JsonReader {
         g["content"]["title"]["highlight"] = (rule.highlightLabel == true);
         g["content"]["hasBackground"] = (rule.hasBackground == true);
         g["content"]["valueText"] = rule.valueText;
+
+        if (rule.hasMenus && !rule.menus.empty()) g["menus"] = rule.menus;
+        else g.erase("menus");
+
+        if (rule.roundDigits >= 0) g["roundDigits"] = rule.roundDigits;
+        else g.erase("roundDigits");
 
         if (!rule.anchorTargets.empty()) {
             if (rule.anchorTargets.size() > 1) {
@@ -301,11 +379,34 @@ namespace IIF::JsonReader {
         return val;
     }
 
-    std::string FormatValue(float val) {
-        char buf[32];
-        if (std::abs(val - std::round(val)) < 0.001f) snprintf(buf, sizeof(buf), "%d", static_cast<int>(std::round(val)));
-        else snprintf(buf, sizeof(buf), "%.1f", val);
+    std::string FormatValue(float val, int roundDigits = -1) {
+        char buf[64];
+        if (roundDigits < 0) {
+            if (std::abs(val - std::round(val)) < 0.001f) snprintf(buf, sizeof(buf), "%d", static_cast<int>(std::round(val)));
+            else snprintf(buf, sizeof(buf), "%.1f", val);
+        }
+        else {
+            snprintf(buf, sizeof(buf), "%.*f", (std::min)(roundDigits, 6), static_cast<double>(val));
+        }
         return std::string(buf);
+    }
+
+    double RoundToDigits(double val, int roundDigits) {
+        if (roundDigits < 0) return val;
+        const double scale = std::pow(10.0, static_cast<double>((std::min)(roundDigits, 6)));
+        return std::round(val * scale) / scale;
+    }
+
+    // hasMenus == false 时所有菜单都显示；否则只要列出的菜单中有任意一个正开着就显示
+    bool IsRuleVisibleInMenu(const JsonRule& a_rule) {
+        if (!a_rule.hasMenus || a_rule.menus.empty()) return true;
+
+        auto* ui = RE::UI::GetSingleton();
+        if (!ui) return false;
+        for (const auto& name : a_rule.menus) {
+            if (!name.empty() && ui->GetMenuOpen(name.c_str())) return true;
+        }
+        return false;
     }
 
     void ParseBox(const json& j, BoxConfig& box) {
@@ -322,6 +423,7 @@ namespace IIF::JsonReader {
             if (j["DataSource"].contains("Offset")) box.dataSource.Offset = j["DataSource"]["Offset"].get<float>();
             if (j["DataSource"].contains("Multiplier")) box.dataSource.Multiplier = j["DataSource"]["Multiplier"].get<float>();
             if (j["DataSource"].contains("Suffix")) box.dataSource.Suffix = j["DataSource"]["Suffix"].get<std::string>();
+            box.dataSource.roundDigits = ParseRoundDigitsSafe(j["DataSource"], "roundDigits", box.dataSource.roundDigits);
         }
         box.active = true;
     }
@@ -345,6 +447,7 @@ namespace IIF::JsonReader {
             if (j["DataSource"].contains("Offset")) res.dataSource.Offset = j["DataSource"]["Offset"].get<float>();
             if (j["DataSource"].contains("Multiplier")) res.dataSource.Multiplier = j["DataSource"]["Multiplier"].get<float>();
             if (j["DataSource"].contains("Suffix")) res.dataSource.Suffix = j["DataSource"]["Suffix"].get<std::string>();
+            res.dataSource.roundDigits = ParseRoundDigitsSafe(j["DataSource"], "roundDigits", res.dataSource.roundDigits);
         }
         if (j.contains("fillPct")) res.fillPct = j["fillPct"].get<float>();
         if (j.contains("shieldPct")) res.shieldPct = j["shieldPct"].get<float>();
@@ -422,6 +525,9 @@ namespace IIF::JsonReader {
                                     baseTemplate.hasBackground = ParseBoolSafe(cnt, "hasBackground", baseTemplate.hasBackground);
                                 }
                             }
+
+                            ParseMenusSafe(gl, "menus", baseTemplate.menus, baseTemplate.hasMenus);
+                            baseTemplate.roundDigits = ParseRoundDigitsSafe(gl, "roundDigits", baseTemplate.roundDigits);
                         }
 
                         if (j.contains("DataRules") && j["DataRules"].is_array()) {
@@ -439,6 +545,8 @@ namespace IIF::JsonReader {
                                     for (auto& el : ruleJson["ValuesMapping"].items()) ParseResultBlock(el.value(), rule.valuesMapping[el.key()]);
                                 }
                                 if (ruleJson.contains("Result")) ParseResultBlock(ruleJson["Result"], rule.result);
+                                ParseMenusSafe(ruleJson, "menus", rule.menus, rule.hasMenus);
+                                rule.roundDigits = ParseRoundDigitsSafe(ruleJson, "roundDigits", rule.roundDigits);
                                 g_rules.push_back(rule);
                             }
                         }
@@ -598,11 +706,8 @@ namespace IIF::JsonReader {
             ValidateInstancePtr(a_instance);
         }
 
-        bool isExamineMenu = false;
-        auto ui = RE::UI::GetSingleton();
-        if (ui && ui->GetMenuOpen("ExamineMenu")) {
-            isExamineMenu = true;
-        }
+        auto* menuUI = RE::UI::GetSingleton();
+        const bool isExamineMenu = menuUI && menuUI->GetMenuOpen("ExamineMenu");
 
         static auto s_lastCheckTime = std::chrono::steady_clock::now();
         static std::filesystem::file_time_type s_lastModifiedTime;
@@ -636,6 +741,8 @@ namespace IIF::JsonReader {
         }
 
         for (const auto& rule : g_rules) {
+            if (!IsRuleVisibleInMenu(rule)) continue;
+
             bool ruleMatched = false; ResultBlock targetResult; float extractedActorValue = -999.0f; RE::TESForm* hitForm = nullptr;
 
             auto CheckSingleForm = [&](const std::string& idStr) -> bool {
@@ -791,6 +898,26 @@ namespace IIF::JsonReader {
                                     if (ds.ID == "AimModelRecoilMinDegPerShot") {
                                         if (!weapData->aimModel) return 0.0f;
                                         return FinishWeaponStat(weapData->aimModel->aimModelData.aimModelRecoilMinDegPerShot);
+                                    }
+                                    if (ds.ID == "AimModelRecoilArcDeg") {
+                                        if (!weapData->aimModel) return 0.0f;
+                                        return FinishWeaponStat(weapData->aimModel->aimModelData.aimModelRecoilArcDeg);
+                                    }
+                                    if (ds.ID == "AimModelRecoilArcRotateDeg") {
+                                        if (!weapData->aimModel) return 0.0f;
+                                        return FinishWeaponStat(weapData->aimModel->aimModelData.aimModelRecoilArcRotateDeg);
+                                    }
+                                    if (ds.ID == "AimModelMaxConeDegrees") {
+                                        if (!weapData->aimModel) return 0.0f;
+                                        return FinishWeaponStat(weapData->aimModel->aimModelData.aimModelMaxConeDegrees);
+                                    }
+                                    if (ds.ID == "AimModelMinConeDegrees") {
+                                        if (!weapData->aimModel) return 0.0f;
+                                        return FinishWeaponStat(weapData->aimModel->aimModelData.aimModelMinConeDegrees);
+                                    }
+                                    if (ds.ID == "AimModelConeIronSightsMultiplier") {
+                                        if (!weapData->aimModel) return 0.0f;
+                                        return FinishWeaponStat(weapData->aimModel->aimModelData.aimModelConeIronSightsMultiplier);
                                     }
                                     if (ds.ID == "ZoomDataFOVMult") {
                                         if (!weapData->zoomData) return 0.0f;
@@ -1033,11 +1160,12 @@ namespace IIF::JsonReader {
 
                         if (pSuccess) {
                             float finalPreviewVal = (previewVal + finalBox.dataSource.Offset) * finalBox.dataSource.Multiplier;
+                            const int roundDigits = finalBox.dataSource.roundDigits >= 0 ? finalBox.dataSource.roundDigits : rule.roundDigits;
 
-                            outHasRaw = true; outRaw = finalPreviewVal;
+                            outHasRaw = true; outRaw = RoundToDigits(finalPreviewVal, roundDigits);
 
                             std::string prefix = ((finalBox.dataSource.Type == "VATS_Accuracy" || finalBox.dataSource.Type == "OMODMagicMagnitude") && finalPreviewVal > 0.001f) ? "+" : "";
-                            finalBox.value = prefix + FormatValue(finalPreviewVal) + finalBox.dataSource.Suffix;
+                            finalBox.value = prefix + FormatValue(finalPreviewVal, roundDigits) + finalBox.dataSource.Suffix;
 
                             bool isEquipped = false;
                             if (a_item && a_item->stackData) {
@@ -1064,8 +1192,10 @@ namespace IIF::JsonReader {
                             }
 
                             if (outHasDiff) {
-                                // Match FormatValue/ItemCard's one-decimal display precision.
-                                outDifference = std::round(outDifference * 10.0f) / 10.0f;
+                                // Match the value's display precision so the diff never shows
+                                // digits the value itself is hiding.
+                                const int diffDigits = roundDigits >= 0 ? roundDigits : 1;
+                                outDifference = static_cast<float>(RoundToDigits(outDifference, diffDigits));
                                 if (outDifference == 0.0f) {
                                     outDifference = 0.0f;
                                     outHasDiff = false;

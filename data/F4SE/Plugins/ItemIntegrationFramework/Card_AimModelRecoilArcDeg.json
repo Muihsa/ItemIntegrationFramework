@@ -1,0 +1,36 @@
+{
+    "DataRules": [
+        {
+            "ConditionIDs": [
+                "Weapon"
+            ],
+            "ConditionType": "FormType",
+            "Result": {
+                "DataSource": {
+                    "ID": "AimModelRecoilArcDeg",
+                    "Type": "WeaponStat",
+                    "roundDigits": 2
+                },
+                "state": "normal"
+            }
+        }
+    ],
+    "global": {
+        "anchorMode": "after",
+        "anchorTarget": "Stats_AimModelRecoilMinDegPerShot",
+        "content": {
+            "hasBackground": false,
+            "title": {
+                "highlight": false,
+                "text": "$IIF_RecoilArc"
+            }
+        },
+        "displayType": 0,
+        "hasBackground": false,
+        "id": "Stats_AimModelRecoilArcDeg",
+        "menus": [
+            "ExamineMenu"
+        ],
+        "priority": 48
+    }
+}

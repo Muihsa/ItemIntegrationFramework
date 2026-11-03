@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "pch.h"
 
 namespace IIF::JsonReader
@@ -10,6 +10,7 @@ namespace IIF::JsonReader
 		float Offset{ 0.0f };     // 在乘 Multiplier 之前先加到原始值上：(raw + Offset) * Multiplier
 		float Multiplier{ 1.0f };
 		std::string Suffix;
+		int roundDigits{ -1 };    // 最终显示数值的小数位数：-1 = 自动（整数不带小数点，否则 1 位）
 		bool active{ false };
 	};
 
@@ -89,6 +90,12 @@ namespace IIF::JsonReader
 
 		BoxConfig globalLeftBox;
 		BoxConfig globalRightBox;
+
+		// 显示菜单白名单（ExamineMenu / PipboyMenu / BarterMenu / ContainerMenu）。
+		// hasMenus == false 表示不限制菜单；为 true 时这张卡只在列出的菜单里显示。
+		std::vector<std::string> menus;
+		bool hasMenus{ false };
+		int roundDigits{ -1 };   // 规则级小数位数默认值，可被 DataSource.roundDigits 覆盖
 	};
 
 	extern std::vector<JsonRule> g_rules;

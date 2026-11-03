@@ -1,0 +1,36 @@
+{
+    "DataRules": [
+        {
+            "ConditionIDs": [
+                "Weapon"
+            ],
+            "ConditionType": "FormType",
+            "Result": {
+                "DataSource": {
+                    "ID": "AimModelRecoilArcRotateDeg",
+                    "Type": "WeaponStat",
+                    "roundDigits": 0
+                },
+                "state": "normal"
+            }
+        }
+    ],
+    "global": {
+        "anchorMode": "after",
+        "anchorTarget": "Stats_AimModelRecoilArcDeg",
+        "content": {
+            "hasBackground": false,
+            "title": {
+                "highlight": false,
+                "text": "$IIF_RecoilArcRotate"
+            }
+        },
+        "displayType": 0,
+        "hasBackground": false,
+        "id": "Stats_AimModelRecoilArcRotateDeg",
+        "menus": [
+            "ExamineMenu"
+        ],
+        "priority": 49
+    }
+}

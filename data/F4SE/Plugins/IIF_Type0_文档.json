@@ -21,6 +21,22 @@
     "hideDifference": false,       // [新增] 是否隐藏对比差值？false 则显示如 (+5.0) 的红绿对比
     "invertDiffColor": false,      // [新增] 是否反转差值红绿逻辑？(true=正红负绿，适用于AP消耗)
 
+    // [新增] 菜单白名单：决定这张卡在哪些物品菜单里显示。
+    // 不写这个字段（或写成空数组）= 所有菜单都显示。
+    // 可识别的名字：ExamineMenu(改造/查看)、PipboyMenu(哔哔小子)、BarterMenu(交易)、ContainerMenu(容器)。
+    // 也认简写（"Examine"、"Pipboy"…，大小写不限）；其它名字会原样交给游戏查询，例如 "CraftingMenu"。
+    // 想让详尽数值只出现在改造界面、不挤占哔哔小子的狭窄空间，就这样写：
+    //   "menus": ["ExamineMenu"],
+    // 也支持对象写法：
+    //   "menus": { "ExamineMenu": true, "PipboyMenu": false, "BarterMenu": false, "ContainerMenu": false },
+    // 单条 DataRules 里也可以写 "menus"，会覆盖 global 里的设定。
+
+    // [新增] 最终显示数值的小数位数（在 Offset/Multiplier 之后生效，红绿差值同步使用）。
+    // -1 或不写 = 自动（整数不带小数点，其余保留 1 位）；0~6 = 四舍五入到该位数，如 2 -> 1.5、0 -> 2。
+    // 注意这是"四舍五入"而不是补零：游戏数字格式会去掉末尾的 0（1.5 显示为 1.5，而非 1.50）。
+    // 也可以写在 DataSource 内部，此时以 DataSource 的值为准。
+    "roundDigits": -1,
+
     "content": {
       "title": { 
         "text": "属性名称",        // 左侧显示的文字，支持本地化标签(如 "$acc")
