@@ -18,6 +18,15 @@ namespace IIF::Hooks
 		std::string icon2; bool icon2IsText; std::string val2; bool val2Bad; bool val2Good; bool val2Standard; std::string align2;
 	};
 
+	// 由 JsonReader::EvaluateItemRules 在同一次刷新内填好，RebuildUIArray 负责把它写进原版伤害卡。
+	struct InlineDamageRequest {
+		bool active{ false };
+		float projectiles{ 0.0f };
+		std::string format{ "{damage} x {count}" };
+		int roundDigits{ 0 };
+	};
+
+	extern InlineDamageRequest g_inlineDamage;
 	extern std::vector<InternalCard> g_pendingCards;
 
 	void Install();

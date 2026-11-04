@@ -1,8 +1,12 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "UIHooks.h"
 #include "JsonReader.h"
 #include "IIF_API.h"
 #include "ItemCardData.h"
+#include "InlineDamageFormat.h"
+
+#include <cstdio>
+#include <cstdlib>
 
 #define XBYAK_NO_OP_NAMES 
 #include <xbyak/xbyak.h>
@@ -31,6 +35,7 @@ namespace IIF::Hooks
 	struct ScaleArgs { Scaleform::GFx::Value* res; Scaleform::GFx::Movie* mov; Scaleform::GFx::Value* ths; Scaleform::GFx::Value* unk; Scaleform::GFx::Value* args; std::uint32_t numArgs; std::uint32_t pad2C; std::uint32_t optionID; };
 
 	std::vector<InternalCard> g_pendingCards;
+	InlineDamageRequest g_inlineDamage;
 
 	// 👑 保留：存放外部 Mod 发来的修改请求
 	struct ModRequest {
@@ -150,6 +155,31 @@ namespace IIF::Hooks
 		message.entryCount = static_cast<std::uint32_t>(entries.size());
 		message.entrySize = sizeof(IIF_API::ItemCardDataEntry);
 		messaging->Dispatch(IIF_API::kMessage_ItemCardDataReady, &message, sizeof(message), nullptr);
+	}
+
+	bool TryReadCardNumber(Scaleform::GFx::Value& a_card, double& a_out)
+	{
+		if (!a_card.IsObject()) return false;
+		Scaleform::GFx::Value value;
+		if (!a_card.GetMember("value", &value)) return false;
+		if (value.IsNumber()) { a_out = value.GetNumber(); return true; }
+		if (value.IsInt()) { a_out = static_cast<double>(value.GetInt()); return true; }
+		if (value.IsUInt()) { a_out = static_cast<double>(value.GetUInt()); return true; }
+		if (value.IsString()) {
+			const char* text = value.GetString();
+			if (!text || !*text) return false;
+			char* end = nullptr;
+			const double parsed = std::strtod(text, &end);
+			if (end == text) return false;
+			a_out = parsed;
+			return true;
+		}
+		return false;
+	}
+
+	bool IsDamageCardId(const std::string& a_id)
+	{
+		return a_id == "$dmg" || a_id == "Damage" || a_id == "DAMAGE" || a_id == "伤害";
 	}
 
 	void RebuildUIArray(Scaleform::GFx::Value& a_array, std::uint32_t newCardCount, const IIF_API::UpdateMessage& a_update) {
@@ -313,6 +343,7 @@ namespace IIF::Hooks
 		// ========================================================
 		std::vector<ItemCardData::Entry> snapshots;
 		snapshots.reserve(finalLayout.size());
+		bool inlineApplied = false;
 		for (auto& e : finalLayout) {
 			ItemCardData::Entry snapshot;
 			snapshot.id = GetCardID(e);
@@ -333,6 +364,20 @@ namespace IIF::Hooks
 					}
 				}
 			}
+
+			// NumProjectiles 植入显示：把原版伤害行改写成「单发伤害 x 弹丸数」。
+			// 只动显示文本 valueText，value 数字保持原版总伤害，红绿差值仍按总伤害比较。
+			if (!inlineApplied && g_inlineDamage.active && g_inlineDamage.projectiles > 1.0f && IsDamageCardId(snapshot.id)) {
+				double totalDamage = 0.0;
+				if (TryReadCardNumber(e, totalDamage) && totalDamage > 0.0) {
+					const std::string inlineText = InlineDamage::Build(g_inlineDamage.format, totalDamage, static_cast<double>(g_inlineDamage.projectiles), g_inlineDamage.roundDigits);
+					if (!inlineText.empty()) {
+						e.SetMember("valueText", Scaleform::GFx::Value(inlineText.c_str()));
+						inlineApplied = true;
+					}
+				}
+			}
+
 			snapshot.finalValue = ReadValueSnapshot(e);
 			snapshot.label = ReadStringMember(e, "label");
 			snapshot.valueText = ReadStringMember(e, "valueText");
@@ -344,7 +389,7 @@ namespace IIF::Hooks
 		}
 
 		BroadcastItemCardData(a_update, snapshots);
-		if (!g_pendingCards.empty() || !g_pendingMods.empty()) {
+		if (!g_pendingCards.empty() || !g_pendingMods.empty() || inlineApplied) {
 			a_array.RemoveElements(0, totalSize);
 			for (auto& e : finalLayout) { a_array.PushBack(e); }
 		}
@@ -353,6 +398,7 @@ namespace IIF::Hooks
 	void DispatchAndInject(Scaleform::GFx::Movie* movie, Scaleform::GFx::Value& a_array, RE::TESForm* form, RE::BGSInventoryItem* item, RE::TBO_InstanceData* instance, std::uint32_t stackIdx, std::uint32_t handleID) {
 		g_pendingCards.clear();
 		g_pendingMods.clear(); // 👑 清空历史修改记录
+		g_inlineDamage = InlineDamageRequest{};
 
 		IIF_API::UpdateMessage msg;
 		msg.itemForm = form; msg.inventoryItem = item; msg.instanceData = instance; msg.gfxArray = &a_array;

@@ -17,6 +17,7 @@ Optional/default rule files:
   Card_VATS.json
   Card_SecondaryDamage.json
   Card_AmmoCapacity.json
+  Card_NumProjectiles.json
   Card_AimModelRecoilMaxDegPerShot.json
   Card_AimModelRecoilMinDegPerShot.json
   Card_AimModelRecoilArcDeg.json
@@ -37,10 +38,32 @@ Rule loading:
 
 WeaponStat data source IDs:
   APCost (legacy alias), AttackActionPointCost, Speed, Reach, SecondaryDamage,
-  AmmoCapacity, AimModelRecoilMaxDegPerShot, AimModelRecoilMinDegPerShot,
-  AimModelRecoilArcDeg, AimModelRecoilArcRotateDeg, AimModelMaxConeDegrees,
-  AimModelMinConeDegrees, AimModelConeIronSightsMultiplier,
+  AmmoCapacity, NumProjectiles, AimModelRecoilMaxDegPerShot,
+  AimModelRecoilMinDegPerShot, AimModelRecoilArcDeg, AimModelRecoilArcRotateDeg,
+  AimModelMaxConeDegrees, AimModelMinConeDegrees,
+  AimModelConeIronSightsMultiplier,
   SightedTransitionSeconds, ZoomDataFOVMult, ReloadSpeed, CritCharge, CritDamage.
+
+Projectile count (NumProjectiles):
+  "Type": "WeaponStat", "ID": "NumProjectiles" reads RangedData::numProjectiles
+  from the weapon instance (OMOD changes such as splitter barrels are included).
+
+  A NumProjectiles rule normally renders its own card. Set inlineDamage to fold
+  the count into the vanilla Damage row instead; the bundled
+  Card_NumProjectiles.json ships with inlineDamage enabled. Add these keys to
+  "global" or to a DataRules entry:
+    "inlineDamage": true                         // false/omitted = standalone card
+    "inlineDamageFormat": "{damage} x {count}"   // optional, this is the default
+    "inlineDamageDigits": 0                      // optional, decimals for {damage}
+
+  With inlineDamage enabled, a weapon that fires more than one projectile shows
+  "per-shot x count" instead of the total damage, e.g. total 100 with 8 pellets
+  becomes "13 x 8". Single-projectile weapons are left untouched. The numeric
+  card value stays the original total damage, so the red/green comparison still
+  compares total damage. Placeholders: {damage} = per-projectile damage,
+  {count} = projectile count, {total} = original total damage.
+  Inline mode is only honoured when the rule's DataSource is
+  WeaponStat/NumProjectiles.
 
 Menu visibility (menus):
   By default a card shows in every menu. Add "menus" to "global" (or to a single

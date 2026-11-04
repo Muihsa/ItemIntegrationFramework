@@ -96,6 +96,12 @@ namespace IIF::JsonReader
 		std::vector<std::string> menus;
 		bool hasMenus{ false };
 		int roundDigits{ -1 };   // 规则级小数位数默认值，可被 DataSource.roundDigits 覆盖
+
+		// NumProjectiles 专用：把弹丸数并进原版伤害行（"13 x 8"），而不是单独出一张卡。
+		// 仅当规则的数据源是 WeaponStat/NumProjectiles 时生效；弹丸数为 1 时保持原版数值。
+		bool inlineDamage{ false };
+		std::string inlineDamageFormat{ "{damage} x {count}" };  // {damage} 单发伤害 / {count} 弹丸数 / {total} 原版总伤害
+		int inlineDamageDigits{ 0 };  // {damage} 的小数位数，默认取整
 	};
 
 	extern std::vector<JsonRule> g_rules;

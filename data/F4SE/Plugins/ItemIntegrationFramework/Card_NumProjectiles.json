@@ -1,0 +1,41 @@
+{
+    "global": {
+        "id": "Stats_NumProjectiles",
+        "priority": 46,
+        "displayType": 0,
+        "hasBackground": false,
+        "anchorTarget": [
+            "Stats_AmmoCapacity",
+            "$ammo"
+        ],
+        "anchorMode": [
+            "after",
+            "after"
+        ],
+        "comment": "inlineDamage=true folds the projectile count into the vanilla Damage row as 'per-shot x count'; false renders this card on its own. Only weapons with more than one projectile are rewritten.",
+        "inlineDamage": true,
+        "inlineDamageFormat": "{damage} x {count}",
+        "inlineDamageDigits": 0,
+        "content": {
+            "title": {
+                "highlight": false,
+                "text": "$IIF_NumProjectiles"
+            }
+        }
+    },
+    "DataRules": [
+        {
+            "ConditionType": "FormType",
+            "ConditionIDs": [
+                "Weapon"
+            ],
+            "Result": {
+                "DataSource": {
+                    "Type": "WeaponStat",
+                    "ID": "NumProjectiles"
+                },
+                "state": "normal"
+            }
+        }
+    ]
+}
