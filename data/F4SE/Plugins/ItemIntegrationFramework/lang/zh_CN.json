@@ -50,5 +50,7 @@
     "UI_MenuPipboy": "哔哔小子",
     "UI_MenuBarter": "交易",
     "UI_MenuContainer": "容器",
-    "UI_MenusHint": "(?) 全部不勾选 = 所有菜单都显示；勾选后只在这些菜单显示。"
+    "UI_MenusHint": "(?) 全部不勾选 = 所有菜单都显示；勾选后只在这些菜单显示。",
+    "UI_BroadcastOnly": "仅读取并广播（不显示在信息卡）",
+    "UI_BroadcastOnlyHint": "(?) 只取值并通过 IIF 广播给其它插件，不插入信息卡、界面上完全不可见。"
 }

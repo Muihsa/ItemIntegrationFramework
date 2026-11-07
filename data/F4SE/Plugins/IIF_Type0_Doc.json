@@ -39,6 +39,13 @@
     // Can also be set inside a DataSource, where it wins over this rule-level value.
     "roundDigits": -1,
 
+    // [New] Broadcast-only rule: read and publish the value, but never draw a card.
+    // The value is still sent through ItemCardDataReady with
+    // kItemCardDataFlag_BroadcastOnly; nothing is inserted into the info card list,
+    // so the entry is invisible in every menu. A DataRules entry may override this.
+    //   "broadcastOnly": true,
+    "broadcastOnly": false,
+
     "content": {
       "title": { 
         "text": "Attribute Name",  // Text displayed on the left, supports localized tags (e.g., "$acc").

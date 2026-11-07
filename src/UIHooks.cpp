@@ -182,9 +182,53 @@ namespace IIF::Hooks
 		return a_id == "$dmg" || a_id == "Damage" || a_id == "DAMAGE" || a_id == "伤害";
 	}
 
-	void RebuildUIArray(Scaleform::GFx::Value& a_array, std::uint32_t newCardCount, const IIF_API::UpdateMessage& a_update) {
+	// 只广播的卡片不会插入信息卡列表，这里按与注入卡相同的字段口径整理成广播条目。
+	ItemCardData::ValueSnapshot ReadBroadcastOnlyValue(const InternalCard& a_card) {
+		ItemCardData::ValueSnapshot result;
+		if (a_card.hasRawValue) {
+			result.type = IIF_API::ItemCardValueType::kNumber;
+			result.number = a_card.rawValue;
+		}
+		else if (!a_card.value.empty()) {
+			result.type = IIF_API::ItemCardValueType::kString;
+			result.text = a_card.value;
+		}
+		return result;
+	}
+
+	void AppendBroadcastOnlyEntries(std::vector<ItemCardData::Entry>& a_snapshots, const std::vector<InternalCard>& a_cards) {
+		for (const auto& card : a_cards) {
+			ItemCardData::Entry entry;
+			entry.id = card.text;
+			entry.label = card.label;
+			entry.valueText = card.valueText;
+			entry.val1 = card.val1;
+			entry.val2 = card.val2;
+			entry.originalValue = ReadBroadcastOnlyValue(card);
+			entry.finalValue = entry.originalValue;
+			// 与可见卡片一样，其它 Mod 的 modifyCard 请求也作用在广播数值上。
+			if (entry.finalValue.type == IIF_API::ItemCardValueType::kNumber) {
+				for (const auto& mod : g_pendingMods) {
+					if (!mod.targetID.empty() && entry.id == mod.targetID) {
+						entry.finalValue.number *= mod.multiplier;
+					}
+				}
+			}
+			entry.displayType = card.displayType;
+			entry.flags = IIF_API::kItemCardDataFlag_BroadcastOnly;
+			a_snapshots.push_back(std::move(entry));
+		}
+	}
+
+	void RebuildUIArray(Scaleform::GFx::Value& a_array, std::uint32_t newCardCount, const IIF_API::UpdateMessage& a_update, const std::vector<InternalCard>& a_broadcastOnly) {
 		std::uint32_t totalSize = a_array.GetArraySize();
-		if (totalSize == 0 || totalSize < newCardCount) return;
+		if (totalSize < newCardCount) {
+			// 数组形状异常时不动 UI，但只广播的条目仍要发给监听方。
+			std::vector<ItemCardData::Entry> snapshots;
+			AppendBroadcastOnlyEntries(snapshots, a_broadcastOnly);
+			BroadcastItemCardData(a_update, snapshots);
+			return;
+		}
 		std::uint32_t origSize = totalSize - newCardCount;
 
 		// ==========================================
@@ -388,6 +432,8 @@ namespace IIF::Hooks
 			snapshots.push_back(std::move(snapshot));
 		}
 
+		AppendBroadcastOnlyEntries(snapshots, a_broadcastOnly);
+
 		BroadcastItemCardData(a_update, snapshots);
 		if (!g_pendingCards.empty() || !g_pendingMods.empty() || inlineApplied) {
 			a_array.RemoveElements(0, totalSize);
@@ -410,6 +456,17 @@ namespace IIF::Hooks
 		if (messaging) messaging->Dispatch(IIF_API::kMessage_UpdateItemCard, &msg, sizeof(msg), nullptr);
 
 		IIF::JsonReader::EvaluateItemRules(form, item, instance, stackIdx);
+
+		// 只广播的规则完全不进入信息卡：先从待注入列表里筛出来，单独走广播通道。
+		std::vector<InternalCard> broadcastOnlyCards;
+		if (!g_pendingCards.empty()) {
+			auto firstBroadcastOnly = std::remove_if(g_pendingCards.begin(), g_pendingCards.end(), [&](const InternalCard& a_card) {
+				if (!a_card.broadcastOnly) return false;
+				broadcastOnlyCards.push_back(a_card);
+				return true;
+			});
+			g_pendingCards.erase(firstBroadcastOnly, g_pendingCards.end());
+		}
 
 		std::uint32_t newCardCount = static_cast<std::uint32_t>(g_pendingCards.size());
 		for (const auto& card : g_pendingCards) {
@@ -468,7 +525,7 @@ namespace IIF::Hooks
 				if (!card.align2.empty()) reqEntry.SetMember("align2", Scaleform::GFx::Value(card.align2.c_str()));
 			}
 		}
-		RebuildUIArray(a_array, newCardCount, msg);
+		RebuildUIArray(a_array, newCardCount, msg, broadcastOnlyCards);
 	}
 
 	using PBInv_t = void(*)(void*, ScaleArgs*); static PBInv_t _PBInv = nullptr;

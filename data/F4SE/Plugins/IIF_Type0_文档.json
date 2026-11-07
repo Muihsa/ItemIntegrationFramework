@@ -37,6 +37,12 @@
     // 也可以写在 DataSource 内部，此时以 DataSource 的值为准。
     "roundDigits": -1,
 
+    // [新增] 仅读取并广播：照常匹配、取值并随 ItemCardDataReady 发出
+    // （条目带 kItemCardDataFlag_BroadcastOnly），但不插入信息卡列表、界面完全不可见。
+    // 单条 DataRules 里也可以写 "broadcastOnly" 覆盖这里的默认值。
+    //   "broadcastOnly": true,
+    "broadcastOnly": false,
+
     "content": {
       "title": { 
         "text": "属性名称",        // 左侧显示的文字，支持本地化标签(如 "$acc")

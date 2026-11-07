@@ -20,6 +20,8 @@ namespace IIF_API
 
     enum ItemCardDataFlags : std::uint32_t {
         kItemCardDataFlag_Injected = 1u << 0,
+        // 只读取并广播、没有插入信息卡列表的条目（JSON 规则的 broadcastOnly）。
+        kItemCardDataFlag_BroadcastOnly = 1u << 1,
     };
 
     struct ItemCardDataEntry {

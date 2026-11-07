@@ -50,5 +50,7 @@
     "UI_MenuPipboy": "Pipboy",
     "UI_MenuBarter": "Barter",
     "UI_MenuContainer": "Container",
-    "UI_MenusHint": "(?) Leave every box unchecked = show in all menus. Checked boxes become a whitelist."
+    "UI_MenusHint": "(?) Leave every box unchecked = show in all menus. Checked boxes become a whitelist.",
+    "UI_BroadcastOnly": "Broadcast Only (Read, No Card)",
+    "UI_BroadcastOnlyHint": "(?) Reads the value and publishes it to listeners only. No card is inserted and nothing is shown in the UI."
 }

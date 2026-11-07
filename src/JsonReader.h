@@ -97,6 +97,10 @@ namespace IIF::JsonReader
 		bool hasMenus{ false };
 		int roundDigits{ -1 };   // 规则级小数位数默认值，可被 DataSource.roundDigits 覆盖
 
+		// 只读取并广播，不插入信息卡：规则照常匹配、取值，数据仍会随 ItemCardDataReady
+		// 发给监听方（条目带 kItemCardDataFlag_BroadcastOnly），但用户界面上看不到这张卡。
+		bool broadcastOnly{ false };
+
 		// NumProjectiles 专用：把弹丸数并进原版伤害行（"13 x 8"），而不是单独出一张卡。
 		// 仅当规则的数据源是 WeaponStat/NumProjectiles 时生效；弹丸数为 1 时保持原版数值。
 		bool inlineDamage{ false };

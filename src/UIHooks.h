@@ -16,6 +16,8 @@ namespace IIF::Hooks
 		bool valueStandard; bool valueBad; bool valueGood;
 		std::string icon1; bool icon1IsText; std::string val1; bool val1Bad; bool val1Good; bool val1Standard; std::string align1;
 		std::string icon2; bool icon2IsText; std::string val2; bool val2Bad; bool val2Good; bool val2Standard; std::string align2;
+		// 只广播、不插入信息卡（JSON 规则的 broadcastOnly）。
+		bool broadcastOnly{ false };
 	};
 
 	// 由 JsonReader::EvaluateItemRules 在同一次刷新内填好，RebuildUIArray 负责把它写进原版伤害卡。

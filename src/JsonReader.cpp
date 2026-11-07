@@ -227,6 +227,7 @@ namespace IIF::JsonReader {
         if (!rule.conditionIDs.empty()) outRule["ConditionIDs"] = rule.conditionIDs;
         if (rule.hasMenus && !rule.menus.empty()) outRule["menus"] = rule.menus;
         if (rule.roundDigits >= 0) outRule["roundDigits"] = rule.roundDigits;
+        outRule["broadcastOnly"] = rule.broadcastOnly;
         if (rule.inlineDamage) {
             outRule["inlineDamage"] = true;
             outRule["inlineDamageFormat"] = rule.inlineDamageFormat;
@@ -295,6 +296,9 @@ namespace IIF::JsonReader {
 
         if (rule.roundDigits >= 0) g["roundDigits"] = rule.roundDigits;
         else g.erase("roundDigits");
+
+        // 文件级默认值；每条规则都会显式保存自己的 broadcastOnly，重载时不会被这里覆盖。
+        g["broadcastOnly"] = (rule.broadcastOnly == true);
 
         if (rule.inlineDamage) {
             g["inlineDamage"] = true;
@@ -581,6 +585,7 @@ namespace IIF::JsonReader {
 
                             ParseMenusSafe(gl, "menus", baseTemplate.menus, baseTemplate.hasMenus);
                             baseTemplate.roundDigits = ParseRoundDigitsSafe(gl, "roundDigits", baseTemplate.roundDigits);
+                            baseTemplate.broadcastOnly = ParseBoolSafe(gl, "broadcastOnly", baseTemplate.broadcastOnly);
                             baseTemplate.inlineDamage = ParseBoolSafe(gl, "inlineDamage", baseTemplate.inlineDamage);
                             if (gl.contains("inlineDamageFormat") && gl["inlineDamageFormat"].is_string()) {
                                 baseTemplate.inlineDamageFormat = gl["inlineDamageFormat"].get<std::string>();
@@ -605,6 +610,7 @@ namespace IIF::JsonReader {
                                 if (ruleJson.contains("Result")) ParseResultBlock(ruleJson["Result"], rule.result);
                                 ParseMenusSafe(ruleJson, "menus", rule.menus, rule.hasMenus);
                                 rule.roundDigits = ParseRoundDigitsSafe(ruleJson, "roundDigits", rule.roundDigits);
+                                rule.broadcastOnly = ParseBoolSafe(ruleJson, "broadcastOnly", rule.broadcastOnly);
                                 rule.inlineDamage = ParseBoolSafe(ruleJson, "inlineDamage", rule.inlineDamage);
                                 if (ruleJson.contains("inlineDamageFormat") && ruleJson["inlineDamageFormat"].is_string()) {
                                     rule.inlineDamageFormat = ruleJson["inlineDamageFormat"].get<std::string>();
@@ -891,7 +897,8 @@ namespace IIF::JsonReader {
             if (ruleMatched) {
                 // 弹丸数并入原版伤害行：只在规则数据源确实是 NumProjectiles 时生效，
                 // 并且弹丸数 > 1 才需要把伤害拆成「单发 x 数量」。
-                if (rule.inlineDamage && RuleUsesNumProjectiles(rule, targetResult)) {
+                // broadcastOnly 规则不产生任何可见改动，所以 inline 改写也让位给广播条目。
+                if (rule.inlineDamage && !rule.broadcastOnly && RuleUsesNumProjectiles(rule, targetResult)) {
                     float projectileCount = 0.0f;
                     if (!Hooks::g_inlineDamage.active && ReadWeaponNumProjectiles(a_form, a_instance, projectileCount) && projectileCount > 1.0f) {
                         Hooks::g_inlineDamage.active = true;
@@ -909,6 +916,7 @@ namespace IIF::JsonReader {
                 ic.hasBackground = rule.hasBackground; ic.backgroundColor = rule.backgroundColor;
                 ic.anchorTargets = rule.anchorTargets; ic.anchorModes = rule.anchorModes;
                 ic.sortValueFrom = rule.sortValueFrom;
+                ic.broadcastOnly = rule.broadcastOnly;
 
                 if (targetResult.hasContent && !targetResult.leftBox.active && !targetResult.rightBox.active) {
                     targetResult.rightBox.active = true; targetResult.rightBox.value = targetResult.value;

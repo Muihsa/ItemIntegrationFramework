@@ -1014,6 +1014,9 @@ namespace IIF::UI
                                     ImGui::TextDisabled("%s", _L("UI_MenusHint"));
                                     ImGui::TreePop();
                                 }
+
+                                ImGui::Checkbox(_L("UI_BroadcastOnly"), &rule.broadcastOnly);
+                                ImGui::TextDisabled("%s", _L("UI_BroadcastOnlyHint"));
                             }
 
                             if (rule.displayType == 0 || rule.displayType == 1) {

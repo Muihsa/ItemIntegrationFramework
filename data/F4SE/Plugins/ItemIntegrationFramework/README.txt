@@ -88,6 +88,17 @@ Display decimals (roundDigits):
   DataSource, where the DataSource value wins:
     "DataSource": { "Type": "WeaponStat", "ID": "AimModelRecoilArcDeg", "roundDigits": 2 }
 
+Broadcast-only rules (broadcastOnly):
+  Add "broadcastOnly": true to "global" or to a single DataRules entry to keep
+  the rule as a pure data source:
+    "broadcastOnly": true
+  The rule still matches and reads its value exactly like a normal card, and the
+  value is still published through ItemCardDataReady (kMessage_ItemCardDataReady).
+  Nothing is inserted into the item card list, so the entry is invisible in every
+  menu. Its broadcast entry carries kItemCardDataFlag_BroadcastOnly instead of
+  kItemCardDataFlag_Injected. Anchors cannot target a broadcast-only rule.
+  Display-only options (anchorTarget, inlineDamage, ...) have no visible effect.
+
 Documentation files:
   The Type0/Type1/Type2 example files are installed next to this folder:
     Data\F4SE\Plugins\IIF_Type0_Doc.json
