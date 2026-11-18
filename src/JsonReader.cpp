@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "JsonReader.h"
 #include "UIHooks.h" 
+#include "ReloadTime/ReloadTimeService.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <filesystem>
@@ -140,6 +141,7 @@ namespace IIF::JsonReader {
         ds["Multiplier"] = source.Multiplier;
         ds["Suffix"] = source.Suffix;
         if (source.roundDigits >= 0) ds["roundDigits"] = source.roundDigits;
+        if (source.speedMode != "divide") ds["SpeedMode"] = source.speedMode;
         return ds;
     }
 
@@ -481,6 +483,11 @@ namespace IIF::JsonReader {
             if (j["DataSource"].contains("Multiplier")) box.dataSource.Multiplier = j["DataSource"]["Multiplier"].get<float>();
             if (j["DataSource"].contains("Suffix")) box.dataSource.Suffix = j["DataSource"]["Suffix"].get<std::string>();
             box.dataSource.roundDigits = ParseRoundDigitsSafe(j["DataSource"], "roundDigits", box.dataSource.roundDigits);
+            if (j["DataSource"].contains("SpeedMode")) {
+                std::string mode = j["DataSource"]["SpeedMode"].get<std::string>();
+                std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
+                box.dataSource.speedMode = (mode == "multiply") ? "multiply" : "divide";
+            }
         }
         box.active = true;
     }
@@ -505,6 +512,11 @@ namespace IIF::JsonReader {
             if (j["DataSource"].contains("Multiplier")) res.dataSource.Multiplier = j["DataSource"]["Multiplier"].get<float>();
             if (j["DataSource"].contains("Suffix")) res.dataSource.Suffix = j["DataSource"]["Suffix"].get<std::string>();
             res.dataSource.roundDigits = ParseRoundDigitsSafe(j["DataSource"], "roundDigits", res.dataSource.roundDigits);
+            if (j["DataSource"].contains("SpeedMode")) {
+                std::string mode = j["DataSource"]["SpeedMode"].get<std::string>();
+                std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
+                res.dataSource.speedMode = (mode == "multiply") ? "multiply" : "divide";
+            }
         }
         if (j.contains("fillPct")) res.fillPct = j["fillPct"].get<float>();
         if (j.contains("shieldPct")) res.shieldPct = j["shieldPct"].get<float>();
@@ -1026,6 +1038,20 @@ namespace IIF::JsonReader {
                             }
                         }
                     }
+                    else if (ds.Type == "WeaponReloadTime") {
+                        // 换弹动画总时长（秒）按 reloadSpeed 换算：默认 duration / reloadSpeed，
+                        // SpeedMode=multiply 时为 duration * reloadSpeed。
+                        // 动画/behavior 任一缺失时 success 保持 false，现有 ResolveBox 逻辑会跳过整张卡。
+                        if (form->Is(RE::ENUM_FORM_ID::kWEAP)) {
+                            const bool multiply = ds.speedMode == "multiply";
+                            if (const auto seconds = IIF::ReloadTime::GetReloadTime(form, instance, ds.ID, multiply)) {
+                                if (std::isfinite(*seconds) && *seconds > 0.0f) {
+                                    success = true;
+                                    return *seconds;
+                                }
+                            }
+                        }
+                    }
                     else if (ds.Type == "VATS_Accuracy") {
                         float totalBonus = 0.0f;
                         success = true;
@@ -1199,7 +1225,7 @@ namespace IIF::JsonReader {
                     // CommonLibF4 marks UIUtils::GetComparisonItems as inlined on NG/AE.
                     // Use the version-stable Actor API for weapon stats on those runtimes.
                     if (!REX::FModule::IsRuntimeOG()) {
-                        if (!boundObj || !boundObj->Is(RE::ENUM_FORM_ID::kWEAP) || ds.Type != "WeaponStat") return;
+                        if (!boundObj || !boundObj->Is(RE::ENUM_FORM_ID::kWEAP) || (ds.Type != "WeaponStat" && ds.Type != "WeaponReloadTime")) return;
                         GetNonOGWeaponDiff(ds, previewVal, multiplier, outDiff, outHasDiff);
                         return;
                     }

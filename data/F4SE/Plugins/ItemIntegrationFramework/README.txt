@@ -28,6 +28,8 @@ Optional/default rule files:
   Card_SightedTransitionSeconds.json
   Card_ZoomDataFOVMult.json
   Card_ReloadSpeed.json
+  Card_ReloadTimeEmpty.json
+  Card_ReloadTimeReserve.json
 
 Rule loading:
   ItemIntegrationFramework loads .json and .jsonc rule files only from:
@@ -43,6 +45,26 @@ WeaponStat data source IDs:
   AimModelMaxConeDegrees, AimModelMinConeDegrees,
   AimModelConeIronSightsMultiplier,
   SightedTransitionSeconds, ZoomDataFOVMult, ReloadSpeed, CritCharge, CritDamage.
+
+Weapon reload time (WeaponReloadTime):
+  Reads the total duration of the first-person reload clip and converts it with
+  the weapon's reload speed:
+    "DataSource": { "Type": "WeaponReloadTime", "ID": "ReloadEmpty", "roundDigits": 2, "Suffix": "s" }
+  Accepted ID values:
+    ReloadEmpty   -> WPNReload.hkx         (empty-magazine reload)
+    ReloadReserve -> WPNReloadReserve.hkx  (tactical / reserve-ammo reload)
+    (WPNReload, WPNReloadReserve, Empty, Reserve, Tactical also work)
+  The animation directory is resolved from the active RACE subgraph data
+  (HumanRace -> Subgraph Data) with the weapon keyword set, i.e. the base
+  weapon keywords plus InstanceData/OMOD keywords. The card is skipped when no
+  subgraph entry matches, the behavior graph does not assign that clip, or the
+  .hkx file cannot be read - so vanilla-style weapons show only the row their
+  behavior actually defines.
+  Speed conversion (default is a division: the bigger reloadSpeed, the shorter
+  the displayed time):
+    "SpeedMode": "divide"    -> clip duration / reloadSpeed   (default, omitted)
+    "SpeedMode": "multiply"  -> clip duration * reloadSpeed
+  Bundled cards: Card_ReloadTimeEmpty.json, Card_ReloadTimeReserve.json.
 
 Projectile count (NumProjectiles):
   "Type": "WeaponStat", "ID": "NumProjectiles" reads RangedData::numProjectiles

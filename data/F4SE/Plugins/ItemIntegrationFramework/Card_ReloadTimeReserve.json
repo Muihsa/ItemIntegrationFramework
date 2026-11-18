@@ -1,0 +1,43 @@
+{
+    "DataRules": [
+        {
+            "ConditionIDs": [
+                "Weapon"
+            ],
+            "ConditionType": "FormType",
+            "Result": {
+                "DataSource": {
+                    "Type": "WeaponReloadTime",
+                    "ID": "ReloadReserve",
+                    "roundDigits": 2,
+                    "Suffix": "s"
+                },
+                "state": "normal",
+                "invertDiffColor": true
+            }
+        }
+    ],
+    "global": {
+        "anchorTarget": [
+            "Stats_ReloadTimeEmpty",
+            "Stats_ReloadSpeed",
+            "Stats_ZoomDataFOVMult"
+        ],
+        "anchorMode": [
+            "after",
+            "after",
+            "after"
+        ],
+        "content": {
+            "hasBackground": false,
+            "title": {
+                "highlight": false,
+                "text": "$IIF_ReloadReserve"
+            }
+        },
+        "displayType": 0,
+        "hasBackground": false,
+        "id": "Stats_ReloadTimeReserve",
+        "priority": 52
+    }
+}

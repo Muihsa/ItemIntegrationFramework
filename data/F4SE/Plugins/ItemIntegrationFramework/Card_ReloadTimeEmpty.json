@@ -1,0 +1,41 @@
+{
+    "DataRules": [
+        {
+            "ConditionIDs": [
+                "Weapon"
+            ],
+            "ConditionType": "FormType",
+            "Result": {
+                "DataSource": {
+                    "Type": "WeaponReloadTime",
+                    "ID": "ReloadEmpty",
+                    "roundDigits": 2,
+                    "Suffix": "s"
+                },
+                "state": "normal",
+                "invertDiffColor": true
+            }
+        }
+    ],
+    "global": {
+        "anchorTarget": [
+            "Stats_ReloadSpeed",
+            "Stats_ZoomDataFOVMult"
+        ],
+        "anchorMode": [
+            "after",
+            "after"
+        ],
+        "content": {
+            "hasBackground": false,
+            "title": {
+                "highlight": false,
+                "text": "$IIF_ReloadEmpty"
+            }
+        },
+        "displayType": 0,
+        "hasBackground": false,
+        "id": "Stats_ReloadTimeEmpty",
+        "priority": 51
+    }
+}

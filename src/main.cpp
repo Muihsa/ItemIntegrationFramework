@@ -4,6 +4,7 @@
 #include "JsonReader.h"
 #include "Localizer.h"
 #include "IIF_API.h"
+#include "ReloadTime/ReloadTimeService.h"
 #include <MinHook.h>
 
 #define PLUGIN_NAME "ItemIntegrationFramework"
@@ -126,6 +127,10 @@ static void OnIIF_F4SEMessage(F4SE::MessagingInterface::Message* a_msg) {
 	TryInstallImGuiEditor("f4se_message");
 	RegisterScaleformTranslations("f4se_message");
 	if (a_msg->type == F4SE::MessagingInterface::kGameLoaded) {
+		// All plugins are compiled at this point; build the RACE subgraph table
+		// used by the reload-time cards once, off the menu hot path.
+		IIF::ReloadTime::Initialize();
+
 		IIF_API::IIF_Interface api;
 		api.RegisterCPPCard = RegisterCPPCard;
 		api.RegisterDamageModifier = IIF::CombatBus::RegisterDamageModifier;

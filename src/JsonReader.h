@@ -11,6 +11,9 @@ namespace IIF::JsonReader
 		float Multiplier{ 1.0f };
 		std::string Suffix;
 		int roundDigits{ -1 };    // 最终显示数值的小数位数：-1 = 自动（整数不带小数点，否则 1 位）
+		// WeaponReloadTime 专用：动画时长与 reloadSpeed 的换算方向。
+		// "divide"（默认）= duration / reloadSpeed；"multiply" = duration * reloadSpeed。
+		std::string speedMode{ "divide" };
 		bool active{ false };
 	};
 
