@@ -38,6 +38,25 @@ Rule loading:
   CPP_Overrides.json is reserved for editor output and C++ card overrides.
   Do not use CPP_Overrides.json as a normal user rule file.
 
+Item card scope (ConditionType):
+  "FormType" is the scope condition for a rule. Besides the whole-item names
+  (Weapon/WEAP, Armor/ARMO, Ammo/AMMO, Alchemy/ALCH), weapons can be scoped to
+  one of the three classes the engine itself uses (WEAP DNAM + 0x36, the
+  animation type - keywords, ammo, magazine capacity and range are ignored
+  because each of them has counter-examples in the vanilla data):
+    Firearm / Gun                       -> WEAPON_TYPE Gun
+    Melee / MeleeWeapon / ColdWeapon    -> HandToHand, one/two-hand sword,
+                                           dagger, axe, mace
+    Thrown / Throwable / Grenade / Mine -> Grenade, Mine
+  Matching ignores case and separators, so "Fire-arm" and "MELEE" work too.
+  "Weapon" still matches every weapon. Bow and Staff are outside all three
+  classes (FO4 never uses those animation types); they only match "Weapon".
+  ConditionType "WeaponType" is accepted as an alias of "FormType":
+    { "ConditionType": "FormType",   "ConditionIDs": ["Firearm"] }
+    { "ConditionType": "WeaponType", "ConditionIDs": ["Melee"] }
+  Pistol/Rifle/Shotgun/Heavy names are keywords, not weapon classes, and are
+  not resolved by this condition.
+
 WeaponStat data source IDs:
   APCost (legacy alias), AttackActionPointCost, Speed, Reach, SecondaryDamage,
   AmmoCapacity, NumProjectiles, AimModelRecoilMaxDegPerShot,

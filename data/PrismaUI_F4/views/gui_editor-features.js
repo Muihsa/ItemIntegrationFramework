@@ -2552,7 +2552,7 @@
         var form = document.createElement("div");
         form.className = "iif-condition-form";
         addLabel(form, "Condition Type", "conditionTypeField");
-        appendSelect(form, "conditionTypeField", [["FormType", "FormType"], ["Keyword", "Keyword"], ["FormID", "FormID"], ["EditorID", "EditorID"], ["Name", "Name"], ["Custom", "Custom"]]);
+        appendSelect(form, "conditionTypeField", [["FormType", "FormType"], ["WeaponType", "WeaponType"], ["Keyword", "Keyword"], ["FormID", "FormID"], ["EditorID", "EditorID"], ["Name", "Name"], ["Custom", "Custom"]]);
         addLabel(form, "Match Type", "matchTypeField");
         appendSelect(form, "matchTypeField", [["OR", "OR"], ["AND", "AND"], ["NOT", "NOT"]]);
         addLabel(form, "Sort Value From", "sortValueFromField");
@@ -2562,7 +2562,7 @@
         addLabel(form, "Condition IDs", "conditionIDsField");
         var ids = document.createElement("textarea");
         ids.id = "conditionIDsField";
-        ids.placeholder = "One ID per line, e.g. Weapon";
+        ids.placeholder = "One ID per line, e.g. Weapon, Firearm, Melee, Thrown";
         form.appendChild(ids);
         sec.body.appendChild(form);
         insertBeforeAdvanced(sec.title, sec.body);

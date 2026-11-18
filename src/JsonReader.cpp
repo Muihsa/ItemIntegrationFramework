@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "JsonReader.h"
 #include "UIHooks.h" 
+#include "WeaponCategory.h"
 #include "ReloadTime/ReloadTimeService.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -880,11 +881,19 @@ namespace IIF::JsonReader {
             bool ruleMatched = false; bool forceFallback = false; ResultBlock targetResult; float extractedActorValue = -999.0f; RE::TESForm* hitForm = nullptr;
 
             auto CheckSingleForm = [&](const std::string& idStr) -> bool {
-                if (rule.conditionType == "FormType") {
+                if (rule.conditionType == "FormType" || rule.conditionType == "WeaponType") {
                     if (idStr == "Weapon" || idStr == "WEAP" || idStr == "WeaponType") return a_form->Is(RE::ENUM_FORM_ID::kWEAP);
                     if (idStr == "Armor" || idStr == "ARMO" || idStr == "ArmorType") return a_form->Is(RE::ENUM_FORM_ID::kARMO);
                     if (idStr == "Ammo" || idStr == "AMMO" || idStr == "AmmoType") return a_form->Is(RE::ENUM_FORM_ID::kAMMO);
                     if (idStr == "Alchemy" || idStr == "ALCH" || idStr == "Potion") return a_form->Is(RE::ENUM_FORM_ID::kALCH);
+
+                    // 武器子类（火器/近战/投掷）只读引擎的 weaponData.type；
+                    // As<> 失败说明是形态异常的自定义 kWEAP，按不匹配处理。
+                    WeaponCategory::Kind weaponKind{};
+                    if (WeaponCategory::TryParseKind(idStr, weaponKind)) {
+                        const auto* weapon = a_form->As<RE::TESObjectWEAP>();
+                        return weapon && WeaponCategory::Classify(static_cast<std::uint8_t>(weapon->weaponData.type.get())) == weaponKind;
+                    }
                 }
 
                 RE::TESForm* conditionForm = GetFormFromIdentifier(idStr);

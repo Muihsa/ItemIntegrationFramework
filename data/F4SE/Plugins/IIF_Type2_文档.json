@@ -129,9 +129,12 @@
     // 【模块 4：外部活体数据源抓取 (外源提取) & 魔法拆包器】
     // ---------------------------------------------------------------------------------------
     {
+      // 💡 植入范围：ConditionType 用 FormType（WeaponType 为其别名）。
+      //    整类物品：Weapon / Armor / Ammo / Alchemy；
+      //    武器可再细分为引擎自身的分类：Firearm(火器)、Melee(近战/徒手)、Thrown(手雷/地雷)。
       "comment": "向引擎外部系统请求数据。👑 支持 WeaponStat(物理隐藏属性) 和 OMODMagicMagnitude(魔法解包)",
       "ConditionType": "WeaponType",
-      "ConditionIDs": ["Pistol"],
+      "ConditionIDs": ["Firearm"],
       "Result": {
         "tag": "VATS 消耗",            
         "state": "standard",

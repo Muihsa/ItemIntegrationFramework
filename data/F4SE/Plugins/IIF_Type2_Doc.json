@@ -85,8 +85,10 @@
       
       // 👑 [Enum] Trigger Condition (ConditionType) - Simplified categories:
       // "Form"       = Core workhorse! Input any ID (Keyword, OMOD, specific weapon, etc.).
-      // "WeaponType" = Scans underlying weapon class (Pistol, Rifle, Shotgun, Heavy, Melee, etc.)
-      // "ItemType"   = Scans main item category (Weapon, Armor, Ammo, Medicine, Misc)
+      // "FormType"   = Item category: Weapon, Armor, Ammo, Alchemy. Weapons can be
+      //                narrowed to the engine's own classes: Firearm, Melee
+      //                (hand-to-hand and cold weapons), Thrown (grenade/mine).
+      // "WeaponType" = Alias of FormType for weapon-class rules, e.g. ["Firearm"].
       "ConditionType": "Form",
       
       "ValuesMapping": {
@@ -138,7 +140,7 @@
     {
       "comment": "Requests dynamically changing data from external systems. 👑 Supports WeaponStat (hidden physical stats) and OMODMagicMagnitude (magic unpacker).",
       "ConditionType": "WeaponType",
-      "ConditionIDs": ["Pistol"],
+      "ConditionIDs": ["Firearm"],
       "Result": {
         "tag": "VATS Cost",            
         "state": "standard",
