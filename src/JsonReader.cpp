@@ -62,6 +62,53 @@ namespace IIF::JsonReader {
         return (std::min)(digits, 6);
     }
 
+    // 兜底配置：global.fallback 作为卡片默认值，DataRules[].fallback 可整块覆盖。
+    // 三种触发方式：
+    //   "enabled": true               启用兜底
+    //   "whenNoData": true            数据源取不到值时不放弃整张卡（默认 true）
+    //   "whenLessOrEqual": 0          数值等于/小于该阈值时改用兜底（不写则不按数值触发）
+    void ParseFallbackSafe(const json& j, const std::string& key, IIF::Fallback::Config& out) {
+        if (!j.contains(key) || !j[key].is_object()) return;
+        const auto& v = j[key];
+
+        out = IIF::Fallback::Config{};
+        out.enabled = ParseBoolSafe(v, "enabled", false);
+
+        if (v.contains("value")) {
+            if (v["value"].is_string()) out.value = v["value"].get<std::string>();
+            else if (v["value"].is_number()) out.value = v["value"].dump();
+        }
+
+        out.whenNoData = ParseBoolSafe(v, "whenNoData", true);
+
+        if (v.contains("whenLessOrEqual")) {
+            const auto& threshold = v["whenLessOrEqual"];
+            if (threshold.is_number()) {
+                out.hasLessOrEqual = true;
+                out.lessOrEqual = threshold.get<double>();
+            }
+            else if (threshold.is_string()) {
+                try { out.lessOrEqual = std::stod(threshold.get<std::string>()); out.hasLessOrEqual = true; }
+                catch (...) {}
+            }
+        }
+    }
+
+    json SerializeFallback(const IIF::Fallback::Config& fallback)
+    {
+        json j;
+        j["enabled"] = fallback.enabled;
+        j["value"] = fallback.value;
+        if (fallback.hasLessOrEqual) j["whenLessOrEqual"] = fallback.lessOrEqual;
+        j["whenNoData"] = fallback.whenNoData;
+        return j;
+    }
+
+    bool HasFallbackConfig(const IIF::Fallback::Config& fallback)
+    {
+        return fallback.enabled || !fallback.value.empty() || fallback.hasLessOrEqual;
+    }
+
     // 把 "ExamineMenu" / "examine" / "Examine" 统一成 "examine"，便于宽松匹配
     std::string NormalizeMenuToken(std::string a_text) {
         std::string out;
@@ -230,6 +277,7 @@ namespace IIF::JsonReader {
         if (rule.hasMenus && !rule.menus.empty()) outRule["menus"] = rule.menus;
         if (rule.roundDigits >= 0) outRule["roundDigits"] = rule.roundDigits;
         outRule["broadcastOnly"] = rule.broadcastOnly;
+        if (HasFallbackConfig(rule.fallback)) outRule["fallback"] = SerializeFallback(rule.fallback);
         if (rule.inlineDamage) {
             outRule["inlineDamage"] = true;
             outRule["inlineDamageFormat"] = rule.inlineDamageFormat;
@@ -301,6 +349,9 @@ namespace IIF::JsonReader {
 
         // 文件级默认值；每条规则都会显式保存自己的 broadcastOnly，重载时不会被这里覆盖。
         g["broadcastOnly"] = (rule.broadcastOnly == true);
+
+        if (HasFallbackConfig(rule.fallback)) g["fallback"] = SerializeFallback(rule.fallback);
+        else g.erase("fallback");
 
         if (rule.inlineDamage) {
             g["inlineDamage"] = true;
@@ -598,6 +649,7 @@ namespace IIF::JsonReader {
                             ParseMenusSafe(gl, "menus", baseTemplate.menus, baseTemplate.hasMenus);
                             baseTemplate.roundDigits = ParseRoundDigitsSafe(gl, "roundDigits", baseTemplate.roundDigits);
                             baseTemplate.broadcastOnly = ParseBoolSafe(gl, "broadcastOnly", baseTemplate.broadcastOnly);
+                            ParseFallbackSafe(gl, "fallback", baseTemplate.fallback);
                             baseTemplate.inlineDamage = ParseBoolSafe(gl, "inlineDamage", baseTemplate.inlineDamage);
                             if (gl.contains("inlineDamageFormat") && gl["inlineDamageFormat"].is_string()) {
                                 baseTemplate.inlineDamageFormat = gl["inlineDamageFormat"].get<std::string>();
@@ -623,6 +675,7 @@ namespace IIF::JsonReader {
                                 ParseMenusSafe(ruleJson, "menus", rule.menus, rule.hasMenus);
                                 rule.roundDigits = ParseRoundDigitsSafe(ruleJson, "roundDigits", rule.roundDigits);
                                 rule.broadcastOnly = ParseBoolSafe(ruleJson, "broadcastOnly", rule.broadcastOnly);
+                                ParseFallbackSafe(ruleJson, "fallback", rule.fallback);
                                 rule.inlineDamage = ParseBoolSafe(ruleJson, "inlineDamage", rule.inlineDamage);
                                 if (ruleJson.contains("inlineDamageFormat") && ruleJson["inlineDamageFormat"].is_string()) {
                                     rule.inlineDamageFormat = ruleJson["inlineDamageFormat"].get<std::string>();
@@ -824,7 +877,7 @@ namespace IIF::JsonReader {
         for (const auto& rule : g_rules) {
             if (!IsRuleVisibleInMenu(rule)) continue;
 
-            bool ruleMatched = false; ResultBlock targetResult; float extractedActorValue = -999.0f; RE::TESForm* hitForm = nullptr;
+            bool ruleMatched = false; bool forceFallback = false; ResultBlock targetResult; float extractedActorValue = -999.0f; RE::TESForm* hitForm = nullptr;
 
             auto CheckSingleForm = [&](const std::string& idStr) -> bool {
                 if (rule.conditionType == "FormType") {
@@ -893,6 +946,14 @@ namespace IIF::JsonReader {
             if (!rule.valuesMapping.empty()) {
                 for (auto& mapPair : rule.valuesMapping) {
                     if (CheckSingleForm(mapPair.first)) { ruleMatched = true; targetResult = mapPair.second; break; }
+                }
+                // 字典映射全部未命中 = 这颗物品没有对应的状态数据（例如没装 BWS 的维护 OMOD）。
+                // 启用兜底时仍然出卡，值位置显示兜底文本，而不是整张卡消失。
+                // hitForm 非空说明映射里的 FormID 至少解析成功过一个。
+                if (rule.fallback.AppliesToMappingMiss(ruleMatched, hitForm != nullptr)) {
+                    ruleMatched = true;
+                    forceFallback = true;
+                    targetResult = rule.result;
                 }
             }
             else if (!rule.conditionIDs.empty()) {
@@ -1041,7 +1102,7 @@ namespace IIF::JsonReader {
                     else if (ds.Type == "WeaponReloadTime") {
                         // 换弹动画总时长（秒）按 reloadSpeed 换算：默认 duration / reloadSpeed，
                         // SpeedMode=multiply 时为 duration * reloadSpeed。
-                        // 动画/behavior 任一缺失时 success 保持 false，现有 ResolveBox 逻辑会跳过整张卡。
+                        // 动画/behavior 任一缺失时 success 保持 false；没有兜底配置时 ResolveBox 会跳过整张卡。
                         if (form->Is(RE::ENUM_FORM_ID::kWEAP)) {
                             const bool multiply = ds.speedMode == "multiply";
                             if (const auto seconds = IIF::ReloadTime::GetReloadTime(form, instance, ds.ID, multiply)) {
@@ -1253,7 +1314,7 @@ namespace IIF::JsonReader {
                     delete compItems;
                 };
 
-                auto ResolveBox = [&](const BoxConfig& globalBox, const BoxConfig& localBox, std::string& outTag, bool& outIsIcon, std::string& outVal, bool& outBad, bool& outGood, bool& outStandard, std::string& outAlign, bool& outHasRaw, double& outRaw, float& outDifference, bool& outHasDiff) -> bool {
+                auto ResolveBox = [&](const BoxConfig& globalBox, const BoxConfig& localBox, std::string& outTag, bool& outIsIcon, std::string& outVal, bool& outBad, bool& outGood, bool& outStandard, std::string& outAlign, bool& outHasRaw, double& outRaw, float& outDifference, bool& outHasDiff, bool& outUsedFallback, bool forceFallbackIfEmpty) -> bool {
                     BoxConfig finalBox = globalBox;
                     if (localBox.active) {
                         if (!localBox.tag.empty()) finalBox.tag = localBox.tag;
@@ -1263,7 +1324,7 @@ namespace IIF::JsonReader {
                         if (!localBox.align.empty()) finalBox.align = localBox.align;
                         if (localBox.dataSource.active) finalBox.dataSource = localBox.dataSource;
                     }
-                    outHasRaw = false; outRaw = 0.0; outDifference = 0.0f; outHasDiff = false;
+                    outHasRaw = false; outRaw = 0.0; outDifference = 0.0f; outHasDiff = false; outUsedFallback = false;
 
                     if (finalBox.dataSource.active) {
                         bool pSuccess = false;
@@ -1272,50 +1333,60 @@ namespace IIF::JsonReader {
                         if (!pSuccess) {
                             // A failed pointer-backed lookup must not create a card with
                             // an empty GFx value, which Scaleform renders as "undefined".
-                            return false;
-                        }
+                            // 规则配置了兜底文本时改为照常出卡，数值位置显示兜底文本。
+                            if (!rule.fallback.AppliesToMissingData()) return false;
 
-                        if (pSuccess) {
+                            finalBox.value = rule.fallback.value;
+                            outUsedFallback = true;
+                        }
+                        else {
                             float finalPreviewVal = (previewVal + finalBox.dataSource.Offset) * finalBox.dataSource.Multiplier;
                             const int roundDigits = finalBox.dataSource.roundDigits >= 0 ? finalBox.dataSource.roundDigits : rule.roundDigits;
 
-                            outHasRaw = true; outRaw = RoundToDigits(finalPreviewVal, roundDigits);
+                            if (rule.fallback.AppliesToValue(finalPreviewVal)) {
+                                // 0、负数、0.0000001 之类的数值没有展示意义，用兜底文本代替。
+                                finalBox.value = rule.fallback.value;
+                                outUsedFallback = true;
+                            }
+                            else {
+                                outHasRaw = true; outRaw = RoundToDigits(finalPreviewVal, roundDigits);
 
-                            std::string prefix = ((finalBox.dataSource.Type == "VATS_Accuracy" || finalBox.dataSource.Type == "OMODMagicMagnitude") && finalPreviewVal > 0.001f) ? "+" : "";
-                            finalBox.value = prefix + FormatValue(finalPreviewVal, roundDigits) + finalBox.dataSource.Suffix;
+                                std::string prefix = ((finalBox.dataSource.Type == "VATS_Accuracy" || finalBox.dataSource.Type == "OMODMagicMagnitude") && finalPreviewVal > 0.001f) ? "+" : "";
+                                finalBox.value = prefix + FormatValue(finalPreviewVal, roundDigits) + finalBox.dataSource.Suffix;
 
-                            bool isEquipped = false;
-                            if (a_item && a_item->stackData) {
-                                if (a_stackID == 0 || a_stackID == static_cast<std::uint32_t>(-1)) {
-                                    for (auto s = a_item->stackData.get(); s; s = s->nextStack.get()) {
-                                        if (s->flags.any(RE::BGSInventoryItem::Stack::Flag::kSlotMask)) {
-                                            isEquipped = true; break;
+                                bool isEquipped = false;
+                                if (a_item && a_item->stackData) {
+                                    if (a_stackID == 0 || a_stackID == static_cast<std::uint32_t>(-1)) {
+                                        for (auto s = a_item->stackData.get(); s; s = s->nextStack.get()) {
+                                            if (s->flags.any(RE::BGSInventoryItem::Stack::Flag::kSlotMask)) {
+                                                isEquipped = true; break;
+                                            }
+                                        }
+                                    }
+                                    else {
+                                        auto s = a_item->GetStackByID(a_stackID);
+                                        if (s && s->flags.any(RE::BGSInventoryItem::Stack::Flag::kSlotMask)) {
+                                            isEquipped = true;
                                         }
                                     }
                                 }
-                                else {
-                                    auto s = a_item->GetStackByID(a_stackID);
-                                    if (s && s->flags.any(RE::BGSInventoryItem::Stack::Flag::kSlotMask)) {
-                                        isEquipped = true;
+
+                                if (!isExamineMenu && !isEquipped && a_form && a_form->IsBoundObject()) {
+                                    auto boundObj = a_form->As<RE::TESBoundObject>();
+                                    if (boundObj) {
+                                        SafeGetEquippedDiff(boundObj, finalBox.dataSource, previewVal, finalBox.dataSource.Multiplier, outDifference, outHasDiff);
                                     }
                                 }
-                            }
 
-                            if (!isExamineMenu && !isEquipped && a_form && a_form->IsBoundObject()) {
-                                auto boundObj = a_form->As<RE::TESBoundObject>();
-                                if (boundObj) {
-                                    SafeGetEquippedDiff(boundObj, finalBox.dataSource, previewVal, finalBox.dataSource.Multiplier, outDifference, outHasDiff);
-                                }
-                            }
-
-                            if (outHasDiff) {
-                                // Match the value's display precision so the diff never shows
-                                // digits the value itself is hiding.
-                                const int diffDigits = roundDigits >= 0 ? roundDigits : 1;
-                                outDifference = static_cast<float>(RoundToDigits(outDifference, diffDigits));
-                                if (outDifference == 0.0f) {
-                                    outDifference = 0.0f;
-                                    outHasDiff = false;
+                                if (outHasDiff) {
+                                    // Match the value's display precision so the diff never shows
+                                    // digits the value itself is hiding.
+                                    const int diffDigits = roundDigits >= 0 ? roundDigits : 1;
+                                    outDifference = static_cast<float>(RoundToDigits(outDifference, diffDigits));
+                                    if (outDifference == 0.0f) {
+                                        outDifference = 0.0f;
+                                        outHasDiff = false;
+                                    }
                                 }
                             }
                         }
@@ -1338,16 +1409,26 @@ namespace IIF::JsonReader {
                     else { outTag = currentTag; }
 
                     outVal = currentVal;
+                    if (forceFallbackIfEmpty && outVal.empty() && rule.fallback.AppliesToMissingData()) {
+                        // 规则匹配到了物品，但没有可显示的值（字典映射全未命中、Result 没给值等）：
+                        // 用兜底文本占位，避免出现空白卡。
+                        outVal = rule.fallback.value;
+                        outUsedFallback = true;
+                    }
                     outBad = (finalBox.state == "bad"); outGood = (finalBox.state == "good"); outStandard = (finalBox.state == "standard");
                     outAlign = finalBox.align.empty() ? "right" : finalBox.align;
                     return true;
                     };
 
-                bool leftHasRaw = false; double leftRaw = 0; float leftDiff = 0.0f; bool leftHasDiff = false;
-                bool rightHasRaw = false; double rightRaw = 0; float rightDiff = 0.0f; bool rightHasDiff = false;
+                bool leftHasRaw = false; double leftRaw = 0; float leftDiff = 0.0f; bool leftHasDiff = false; bool leftFallback = false;
+                bool rightHasRaw = false; double rightRaw = 0; float rightDiff = 0.0f; bool rightHasDiff = false; bool rightFallback = false;
 
-                bool leftResolved = ResolveBox(rule.globalLeftBox, targetResult.leftBox, ic.icon1, ic.icon1IsText, ic.val1, ic.val1Bad, ic.val1Good, ic.val1Standard, ic.align1, leftHasRaw, leftRaw, leftDiff, leftHasDiff);
-                bool rightResolved = ResolveBox(rule.globalRightBox, targetResult.rightBox, ic.icon2, ic.icon2IsText, ic.val2, ic.val2Bad, ic.val2Good, ic.val2Standard, ic.align2, rightHasRaw, rightRaw, rightDiff, rightHasDiff);
+                // 字典映射全未命中的兜底卡：值显示在主容器（只有 leftBox 时用左格）。
+                const bool forceRightFallback = forceFallback && !(targetResult.leftBox.active && !targetResult.rightBox.active);
+                const bool forceLeftFallback = forceFallback && !forceRightFallback;
+
+                bool leftResolved = ResolveBox(rule.globalLeftBox, targetResult.leftBox, ic.icon1, ic.icon1IsText, ic.val1, ic.val1Bad, ic.val1Good, ic.val1Standard, ic.align1, leftHasRaw, leftRaw, leftDiff, leftHasDiff, leftFallback, forceLeftFallback);
+                bool rightResolved = ResolveBox(rule.globalRightBox, targetResult.rightBox, ic.icon2, ic.icon2IsText, ic.val2, ic.val2Bad, ic.val2Good, ic.val2Standard, ic.align2, rightHasRaw, rightRaw, rightDiff, rightHasDiff, rightFallback, forceRightFallback);
                 if (!leftResolved || !rightResolved) continue;
 
                 ic.hasRawValue = rightHasRaw ? rightHasRaw : leftHasRaw;
@@ -1356,7 +1437,8 @@ namespace IIF::JsonReader {
                 ic.hasDifference = rightHasDiff || leftHasDiff;
                 ic.difference = rightHasDiff ? rightDiff : leftDiff;
 
-                ic.suffix = targetResult.rightBox.active ? targetResult.rightBox.dataSource.Suffix : (targetResult.leftBox.active ? targetResult.leftBox.dataSource.Suffix : "");
+                const bool suffixFallback = targetResult.rightBox.active ? rightFallback : (targetResult.leftBox.active ? leftFallback : false);
+                ic.suffix = suffixFallback ? "" : (targetResult.rightBox.active ? targetResult.rightBox.dataSource.Suffix : (targetResult.leftBox.active ? targetResult.leftBox.dataSource.Suffix : ""));
 
                 bool originalHide = targetResult.hideDifference != -1 ? (targetResult.hideDifference == 1) : (rule.hideDifference == 1);
                 ic.showDifference = !originalHide && ic.hasDifference;

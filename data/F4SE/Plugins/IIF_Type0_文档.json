@@ -43,6 +43,28 @@
     //   "broadcastOnly": true,
     "broadcastOnly": false,
 
+    // [新增] 兜底显示：数据取不到时不再整张卡放弃；数值没有展示意义（0、负数、0.0000001）
+    // 时也能换成固定文本。
+    //   "enabled"         是否启用兜底。false 或不写 = 保持原来的行为。
+    //   "value"           代替数值显示的文本，支持本地化标签（如 "$IIF_NA"）。
+    //   "whenNoData"      true（默认）= DataSource 取不到值（缺动画/缺 OMOD、指针读不出、
+    //                     数值非有限值等），或 ValuesMapping 里没有任何一条命中时，
+    //                     仍用兜底文本出卡；false = 和原来一样放弃整张卡。
+    //                     ValuesMapping 的兜底要求至少有一个映射 FormID 能解析出来，
+    //                     插件没装/全部 FormID 写错时不会给所有物品刷兜底卡。
+    //   "whenLessOrEqual" 最终数值（Offset/Multiplier 之后）等于或小于该阈值时改用兜底；
+    //                     不写这个键 = 不按数值触发。
+    // 兜底不会伪造对比差值：这时不显示原始数值，也不显示红绿差值。
+    // 单条 DataRules 里也可以写一块 "fallback"，会整块覆盖 global 里的设定。
+    // 示例（缺数据以及数值 <= 0 时显示 "--"）：
+    //   "fallback": { "enabled": true, "value": "--", "whenNoData": true, "whenLessOrEqual": 0 },
+    "fallback": {
+      "enabled": false,
+      "value": "--",
+      "whenNoData": true,
+      "whenLessOrEqual": 0
+    },
+
     "content": {
       "title": { 
         "text": "属性名称",        // 左侧显示的文字，支持本地化标签(如 "$acc")

@@ -59,7 +59,8 @@ Weapon reload time (WeaponReloadTime):
   weapon keywords plus InstanceData/OMOD keywords. The card is skipped when no
   subgraph entry matches, the behavior graph does not assign that clip, or the
   .hkx file cannot be read - so vanilla-style weapons show only the row their
-  behavior actually defines.
+  behavior actually defines. A rule with a fallback (see below) keeps its card
+  and shows the fallback text instead.
   Speed conversion (default is a division: the bigger reloadSpeed, the shorter
   the displayed time):
     "SpeedMode": "divide"    -> clip duration / reloadSpeed   (default, omitted)
@@ -120,6 +121,33 @@ Broadcast-only rules (broadcastOnly):
   menu. Its broadcast entry carries kItemCardDataFlag_BroadcastOnly instead of
   kItemCardDataFlag_Injected. Anchors cannot target a broadcast-only rule.
   Display-only options (anchorTarget, inlineDamage, ...) have no visible effect.
+
+Fallback display (fallback):
+  A normal rule drops its whole card when a DataSource cannot produce a value
+  (or when no ValuesMapping entry matches), and shows 0/negative/float-dust
+  numbers as they are. Add a "fallback" block to "global" (or to a single
+  DataRules entry, where it replaces the global block) to keep the card and show
+  fixed text instead:
+    "fallback": {
+      "enabled": true,          // false/omitted = old behavior
+      "value": "--",            // text shown instead of the value (localized tags work)
+      "whenNoData": true,       // default true: missing animation/OMOD, unreadable
+                                // pointer, non-finite value, or no ValuesMapping
+                                // entry matched -> still draw the card
+      "whenLessOrEqual": 0      // optional: use the fallback when the final number
+                                // (after Offset/Multiplier) is <= this threshold;
+                                // omit the key to ignore numbers
+    }
+  The fallback replaces the value text only. When it fires there is no raw value
+  and no red/green comparison difference for that box, and a configured
+  DataSource "Suffix" is not appended (include it in "value" if needed).
+  Example: show "--" both for unreadable data and for values at or below 0.
+  A ValuesMapping rule whose entries are all absent from the item still draws
+  its card with the fallback text (e.g. "no maintenance OMOD attached"), but
+  only when at least one mapped FormID resolves - a missing plugin or a typo in
+  every key does not flood the inventory with fallback cards.
+  Values are inherited by every DataRules entry in the file; a rule-level block
+  replaces the inherited one instead of merging with it.
 
 Documentation files:
   The Type0/Type1/Type2 example files are installed next to this folder:

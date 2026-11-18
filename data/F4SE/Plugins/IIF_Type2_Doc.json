@@ -24,6 +24,29 @@
     "hideDifference": false,       // [New] Hide equipped comparison red/green diff? Default is false (C++ auto-calculates).
     "invertDiffColor": false,      // [New] Invert red/green logic? (true=positive red, negative green. Best for AP Cost).
 
+    // [New] Fallback display: keep the card on screen when the data cannot be read, and/or
+    // replace meaningless numbers (0, negative, 0.0000001) with fixed text.
+    //   "enabled":         turn the fallback on. False/omitted = old behavior.
+    //   "value":           text shown instead of the value. May be a localized tag ("$IIF_NA").
+    //   "whenNoData":      true (default) = a DataSource that returns nothing (missing animation
+    //                      or OMOD, unreadable pointer, non-finite value), or a ValuesMapping
+    //                      where no entry matches, still draws the card with the fallback text.
+    //                      false = drop the whole card as before. A ValuesMapping fallback
+    //                      requires at least one mapped FormID to resolve, so a missing plugin
+    //                      does not flood the inventory with fallback cards.
+    //   "whenLessOrEqual": use the fallback when the final number is <= this threshold
+    //                      (after Offset/Multiplier). Omit the key to ignore numbers.
+    // The fallback never invents a difference: no raw value and no red/green diff is shown.
+    // A DataRules entry may carry its own "fallback" block, replacing this one.
+    // Example (show "--" for missing data and for values at or below 0):
+    //   "fallback": { "enabled": true, "value": "--", "whenNoData": true, "whenLessOrEqual": 0 },
+    "fallback": {
+      "enabled": false,
+      "value": "--",
+      "whenNoData": true,
+      "whenLessOrEqual": 0
+    },
+
     // Basic layout containers: Omit unused containers, the engine automatically centers/aligns.
     "content": {
       "title": { 

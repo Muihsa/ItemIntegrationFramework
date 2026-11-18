@@ -1,5 +1,6 @@
 #pragma once
 #include "pch.h"
+#include "FallbackRules.h"
 
 namespace IIF::JsonReader
 {
@@ -103,6 +104,10 @@ namespace IIF::JsonReader
 		// 只读取并广播，不插入信息卡：规则照常匹配、取值，数据仍会随 ItemCardDataReady
 		// 发给监听方（条目带 kItemCardDataFlag_BroadcastOnly），但用户界面上看不到这张卡。
 		bool broadcastOnly{ false };
+
+		// 兜底显示：数据源取不到值时是否仍出卡、数值过小时显示什么文本。
+		// global 里写一份作为默认值，单条 DataRules 里可整块覆盖。
+		IIF::Fallback::Config fallback;
 
 		// NumProjectiles 专用：把弹丸数并进原版伤害行（"13 x 8"），而不是单独出一张卡。
 		// 仅当规则的数据源是 WeaponStat/NumProjectiles 时生效；弹丸数为 1 时保持原版数值。
